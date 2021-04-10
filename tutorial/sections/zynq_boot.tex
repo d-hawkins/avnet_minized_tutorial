@@ -1,0 +1,344 @@
+% =============================================================================
+\section{Zynq Power-on-Reset and Boot}
+% =============================================================================
+\label{sec:zynq_boot}
+
+The Zynq processor power-on-reset and boot procedure is documented in the
+\emph{Technical Reference Manual} (TRM) and \emph{Software Developer
+User Guide}~\cite{Xilinx_UG585_2018,Xilinx_UG821_2015}. The Zynq
+\href{https://www.xilinx.com/support/documentation-navigation/design-hubs/dh0053-zynq-7000-boot-and-config-hub.html}{boot and configuration}
+design hub contains additional cross-references on the power-on-reset
+and boot flow.
+
+The MiniZed board supports two boot modes; JTAG and QSPI Flash.
+%
+The MiniZed Zynq processor determines the boot mode based on the
+\emph{boot mode pin settings} that are read after power is valid,
+when power-on-reset (\verb+PS_POR_B+) deasserts\footnote{The Zynq TRM
+shows the required timing relationship between the power-on-reset
+and system reset signals in Figure 6-4: \emph{Power and Reset Sequencing
+Waveforms} on p164~\cite{Xilinx_UG585_2018}.}.
+%
+Figure~\ref{fig:zynq_boot_mode_pins} shows how seven MIO pins control
+the boot mode. Figure~\ref{fig:minized_boot_mode_pins} shows the
+MiniZed connections for the boot mode pins.
+Table~\ref{tab:minized_boot_mode_pins} summarizes the MiniZed boot mode
+pin connections.
+
+% -----------------------------------------------------------------------------
+% MiniZed Boot Mode Pins
+% -----------------------------------------------------------------------------
+%
+\begin{table}[h]
+\caption{MiniZed boot mode MIO pin settings.}
+\label{tab:minized_boot_mode_pins}
+\begin{center}
+\begin{tabular}{|c|c|p{100mm}|}
+\hline
+MIO Pin(s) & Logic & Description\\
+\hline\hline
+&&\\
+8:7  & 0b & MIO Bank 1+0 voltages are both 3.3V (pp3-4~\cite{Avnet_MiniZed_Schematic_2017})\\
+&&\\
+6    & 0b & Execute BootROM after the PS clock PLLs lock\\
+&&\\
+5    & \textcolor{blue}{0b} or \textcolor{red}{1b} & JTAG/Flash boot mode switch\\
+5:3  & \textcolor{blue}{0}00b & \hspace{1mm}\textcolor{blue}{$\bullet$ JTAG boot mode}\\
+     & \textcolor{red}{1}00b  & \hspace{1mm}\textcolor{red}{$\bullet$ QSPI Flash boot mode}\\
+&&\\
+2    & 0b       & JTAG chain is cascaded (ARM processor and FPGA logic)\\
+&&\\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+% -----------------------------------------------------------------------------
+% Zynq Boot Mode Pins
+% -----------------------------------------------------------------------------
+%
+\begin{figure}[p]
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]
+    {figures/zynq_boot_mode_pins.png}
+  \end{center}
+  \caption{Zynq boot mode MIO pins (from Table 6-4, p166~\cite{Xilinx_UG585_2018}).}
+  \label{fig:zynq_boot_mode_pins}
+\end{figure}
+% -----------------------------------------------------------------------------
+% -----------------------------------------------------------------------------
+% MiniZed Boot Mode Pins
+% -----------------------------------------------------------------------------
+%
+\begin{figure}[p]
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]
+    {figures/minized_boot_mode_pins.png}
+  \end{center}
+  \caption{MiniZed Zynq boot mode MIO pins (from schematic p3~\cite{Avnet_MiniZed_Schematic_2017}).}
+  \label{fig:minized_boot_mode_pins}
+\end{figure}
+% -----------------------------------------------------------------------------
+
+The Zynq processor JTAG boot mode is useful during software development. The SDK can
+be used to configure the programmable logic, configure the processor (using \verb+ps7_init.tcl+),
+download the application image, and then run or debug the application.
+%
+The programmable logic is configuring by the SDK using the \emph{bitstream}
+included in the hardware definition file exported from Vivado.
+
+The MiniZed QSPI Flash boot mode flow is:
+%
+\begin{enumerate}
+\item Power is valid and power-on-reset deasserts.
+\item The hardware samples the boot strap pins (QSPI Flash mode)
+and enables the PS clock PLLs.
+\item When the PS clock PLLs lock, the PS starts executing the on-chip BootROM code.
+\item The BootROM code reads the BootROM Header (Boot Image Header) from QSPI Flash.
+\item The BootROM code loads the First Stage Boot Loader (FSBL) into On-chip memory (OCM).
+\item The BootROM code starts executing the FSBL (ending the BootROM execution).
+\item (Optional) The FSBL code configures the programmable logic.
+\item The FSBL code determines what happens next, eg., on the MiniZed it
+typically loads and executes the second stage boot loader (SSBL), U-Boot.
+\item The U-Boot code loads and executes Linux.
+\end{enumerate}
+%
+The Zynq processor memory map during BootROM execution, and after handoff to the
+FSBL, is given in Figure 6-11~\cite{Xilinx_UG585_2018}: the main change in the
+memory map is the presence of the 64kB BootROM (at address 0x00030000) after the
+192kB OCM (at address 0) during BootROM execution.
+
+% -----------------------------------------------------------------------------
+% Zynq Boot Image Header
+% -----------------------------------------------------------------------------
+%
+\begin{figure}[p]
+  \begin{center}
+    \includegraphics[width=\textwidth]
+    {figures/zynq_bootrom_header.png}
+  \end{center}
+  \caption{Zynq BootROM Image Header (from Table 6-5, pp171-172~\cite{Xilinx_UG585_2018}).}
+  \label{fig:zynq_bootrom_header}
+\end{figure}
+% -----------------------------------------------------------------------------
+%
+Figure~\ref{fig:zynq_bootrom_header} shows the format of the BootROM Header
+(Boot Image Header) in the QSPI flash boot image. The BootROM header is defined
+in the Zynq \emph{Technical Reference Manual} (TRM)~\cite{Xilinx_UG585_2018},
+while boot image creation using the \verb+bootgen+ tool is described in the
+\emph{Software Developers Guide} (pp48-51, and Appendix A~\cite{Xilinx_UG821_2015}).
+%
+The format of the MiniZed QSPI Flash boot image is typically:
+%
+\begin{itemize}
+\item BootROM Header (Boot Image Header)
+\item First Stage Boot Loader (FSBL)
+\item Programmable Logic bitstream
+\item U-Boot (the second stage bootloader)
+\item Additional partitions, eg., Linux and the device tree.
+\end{itemize}
+%
+Insight into the BootROM Header can be gained by decoding an example.
+The BootROM header for the MiniZed \verb+flash_fallback_7007S.bin+
+image can be viewed using U-Boot via:
+%
+\begin{verbatim}
+Zynq> sf probe
+SF: Detected n25q128 with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+Zynq> sf read 10000000 0 1000000
+device 0 whole chip
+SF: 16777216 bytes @ 0x0 Read: OK
+Zynq> crc32 10000000 fc0be4
+crc32 for 10000000 ... 10fc0be3 ==> 005b7b3c
+Zynq> md 10000000 30
+10000000: eafffffe eafffffe eafffffe eafffffe    ................
+10000010: eafffffe eafffffe eafffffe eafffffe    ................
+10000020: aa995566 584c4e58 00000000 01010000    fU..XNLX........
+10000030: 00001700 00018008 00000000 00000000    ................
+10000040: 00018008 00000001 fc164530 00000000    ........0E......
+10000050: 00000000 00000000 00000000 00000000    ................
+10000060: 00000000 00000000 00000000 00000000    ................
+10000070: 00000000 00000000 00000000 00000000    ................
+10000080: 00000000 00000000 00000000 00000000    ................
+10000090: 00000000 00000000 000008c0 00000c80    ................
+100000a0: ffffffff 00000000 ffffffff 00000000    ................
+100000b0: ffffffff 00000000 ffffffff 00000000    ................
+Zynq>
+\end{verbatim}
+%
+The U-Boot commands copy the QSPI flash to DDR memory, calculates the
+image checksum (to confirm it matches the value in
+Table~\ref{tab:factory_image_checksums}),
+and displays the first $48\times32$-bit words (192-bytes) of the
+Boot Image Header. The image details are:
+%
+\begin{enumerate}
+\item \texttt{0x000:} \textbf{Interrupt Table for Execution-in-Place}
+
+The interrupt table is the first $8\times32$-bit words of the header.
+The 32-bit value 0xEAFFFFFE corresponds to an ARMv7 branch-to-self
+instruction~\cite{ARM_ARMv7_2018}, so each interupt handler will
+\emph{lock-up} the processor.
+
+\item \texttt{0x020:} \textbf{Width Detection}
+
+0xAA995566 is used for width detection (p172~\cite{Xilinx_UG585_2018}).
+
+\item \texttt{0x024:} \textbf{Image Identification}
+
+0x584C4E58 corresponds to 8-bit ASCII codes for
+X, L, N, and X in little-endian format, which is why the ASCII
+value displayed by U-Boot is XNLX  (p172~\cite{Xilinx_UG585_2018}).
+
+\item \texttt{0x028:} \textbf{Encryption Status}
+
+0x00000000 indicates the image is not encrypted.
+
+\item \texttt{0x02C:} \textbf{FSBL/User Defined}
+
+0x01010000 indicates the BootROM header version (p173~\cite{Xilinx_UG585_2018}).
+
+\item \texttt{0x030:} \textbf{Source Offset}
+
+0x00001700 offset in bytes to the FSBL image. The flash contents
+near this offset are:
+%
+\begin{verbatim}
+Zynq> md 100016e0 10
+100016e0: ffffffff ffffffff ffffffff ffffffff    ................
+100016f0: ffffffff ffffffff ffffffff ffffffff    ................
+10001700: ea000049 ea000025 ea00002b ea00003b    I...%...+...;...
+10001710: ea000032 e320f000 ea000000 ea00000f    2..... .........
+\end{verbatim}
+%
+The locations prior to offset 0x1700 are blank, and the data starting
+at offset 0x1700 look like ARMv7 instructions.
+
+\item \texttt{0x034:} \textbf{Length of Image}
+
+0x00018008 the image length is 96kbytes plus 8-bytes.
+
+\item \texttt{0x038:} \textbf{FSBL Load Address}
+
+0x00000000 load to the start of OCM.
+
+\item \texttt{0x03C:} \textbf{Start of Execution}
+
+0x00000000 execute from the start of OCM.
+
+\item \texttt{0x040:} \textbf{Total Image Length}
+
+0x00018008 is the same as \texttt{0x034:} \textbf{Length of Image}.
+
+For non-secure boot mode, 0x040 and 0x034 must match
+(p174~\cite{Xilinx_UG585_2018}).
+
+\item \texttt{0x044:} \textbf{QSPI Configuration Word}
+
+0x00000001 matches expected value (p174~\cite{Xilinx_UG585_2018}).
+
+\item \texttt{0x048:} \textbf{Header Checksum}
+
+0xFC164530 matches the inverted sum of 32-bit words 0x020 to 0x044,
+i.e., $\sim$((0xAA995566 + 0x584C4E58 + 0x01010000 + 0x00001700 + 0x00018008
++ 0x00018008 + 0x00000001) \& 0xFFFFFFFF).
+
+\item \texttt{0x04C:} \textbf{FSBL/User Defined} (76-bytes)
+
+Bytes 0x04C to 0x097 are all zero (unused). These bytes can be defined
+using \verb+bootgen+ and the \verb+udf_field+ in the BIF file
+(see Appendix A~\cite{Xilinx_UG821_2015}).
+
+\item \texttt{0x098:} \textbf{Image Header Table Offset}
+
+0x000008C0 Image Header Table offset.
+
+\textcolor{red}{Note: this field is missing from Table 6-5, but is listed in
+the text, with the wrong name!} (see p174~\cite{Xilinx_UG585_2018}).
+
+\item \texttt{0x09C:} \textbf{Partition Header Table Offset}
+
+0x00000C80 Partition Header Table offset.
+
+\textcolor{red}{Note: this field is missing from Table 6-5, but is listed in
+the text, with the wrong description!} (see p175~\cite{Xilinx_UG585_2018}).
+
+\item \texttt{0x0A0:} \textbf{Register Initialization} (2048-bytes)
+
+The repeated pattern of 0xFFFFFFFF 0x00000000 indicates that
+the register initialization block is not used (the register
+address 0xFFFFFFFF terminates register initialization
+(p175~\cite{Xilinx_UG585_2018}).
+
+\item \texttt{0x8A0:} \textbf{Image Header}
+
+Table 6-5 refers to this as the Image Header area, however, the text on
+p176 indicates this is FSBL/User Defined. The Image Header Table offset
+points to 0x8C0, not 0x8A0. Viewing the copy of the QSPI flash image in
+DDR using U-Boot gives:
+%
+\begin{verbatim}
+Zynq> md 100008a0 58
+100008a0: ffffffff ffffffff ffffffff ffffffff    ................
+100008b0: ffffffff ffffffff ffffffff ffffffff    ................
+100008c0: 01020000 00000004 00000320 00000240    ........ ...@...
+100008d0: 00000000 ffffffff ffffffff ffffffff    ................
+100008e0: ffffffff ffffffff ffffffff ffffffff    ................
+100008f0: ffffffff ffffffff ffffffff ffffffff    ................
+10000900: 00000250 00000320 00000000 00000001    P... ...........
+10000910: 7a796e71 5f667362 6c2e656c 66000000    qnyzbsf_le.l...f
+10000920: 00000000 ffffffff ffffffff ffffffff    ................
+10000930: ffffffff ffffffff ffffffff ffffffff    ................
+10000940: 00000260 00000330 00000000 00000001    `...0...........
+10000950: 64657369 676e5f31 5f777261 70706572    ised1_ngarw_repp
+10000960: 2e626974 00000000 00000000 ffffffff    tib.............
+10000970: ffffffff ffffffff ffffffff ffffffff    ................
+10000980: 00000270 00000340 00000000 00000001    p...@...........
+10000990: 752d626f 6f742e65 6c660000 00000000    ob-ue.to..fl....
+100009a0: ffffffff ffffffff ffffffff ffffffff    ................
+100009b0: ffffffff ffffffff ffffffff ffffffff    ................
+100009c0: 00000000 00000350 00000000 00000001    ....P...........
+100009d0: 696d6167 652e7562 00000000 00000000    gamibu.e........
+100009e0: ffffffff ffffffff ffffffff ffffffff    ................
+100009f0: ffffffff ffffffff ffffffff ffffffff    ................
+\end{verbatim}
+%
+This shows that the bytes at offset 0x8A0 are unused, and the bytes
+at 0x8C0 are used.
+The \textbf{Image Header Table Offset} 0x098 indicates there is where
+the image header table is located. The format of the image
+header table is defined in Table A-4, p63~\cite{Xilinx_UG821_2015}.
+The first word matches the expected value of 0x01020000. The
+second word indicates there are 4 image headers. The third word
+indicates the partition header is at word offset 0x320, which is
+byte offset 0xC80, and that value matches the value for the
+\textbf{Partition Header Table Offset} 0x09C. The forth word
+indicates the first image header is at word offset 0x240, which
+is byte offset 0x900. The fifth word 0x00000000 is unused, and
+the values 0xFFFFFFFF pad the header table to the next 64-byte
+(0x40) boundary.
+
+\item \texttt{0x8C0:} \textbf{Partition Header}
+
+Table 6-5 refers to this as the Partion Header area, however, the
+decoding of the header indicates there is where the Image Header Table
+is located. The image header was decoded in the previous step.
+
+\item \texttt{0x900:} \textbf{FSBL Image or User Code}
+
+The Image Header Table indicates that this is the location of the
+first of the array of image headers. The Image Header format is
+defined in in Table A-7, p66~\cite{Xilinx_UG821_2015}.
+%
+Decoding the strings for the four image names gives;
+\verb+zynq_fsbl.elf+, \verb+design_1_wrapper.bit+, \verb+u-boot.elf+,
+and \verb+image.ub+. This indicates that the QSPI flash fallback
+image contains the FSBL, a bitfile, U-boot, and a Linux image,
+i.e., exactly what we would expect to find in the fallback image.
+
+\end{enumerate}
+%
+The manual decoding of the MiniZed QSPI flash fallback image has exposed
+some minor inconsistencies in the Xilinx documentation, however, the
+documentation provides sufficient information to interpret a boot image.
+

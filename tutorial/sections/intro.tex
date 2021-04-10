@@ -1,0 +1,112 @@
+% =============================================================================
+\section{Introduction}
+% =============================================================================
+
+The \href{http://www.minized.org}{MiniZed} is a low-cost (US\$89) development
+board from Avnet containing a Xilinx Zynq-7000 programmable system-on-chip.
+%
+Figure~\ref{fig:minized_schematic_block_diagram} shows a block diagram of
+the MiniZed board. The MiniZed
+features~\cite{Avnet_MiniZed_HW_2017,Avnet_MiniZed_Schematic_2017}:
+%
+\begin{itemize}
+% ---------------------
+\item Xilinx Zynq-7000
+% ---------------------
+%
+\begin{itemize}
+\item Zynq 7Z007S single-core ARM Cortex-A9 processor (XC7Z007S-1CLG225C)
+\item 28nm Artix-7 series programmable logic
+\begin{itemize}
+\item 3,600 logic slices containing~\cite{Xilinx_UG585_2018}
+\begin{itemize}
+\item 14,400 6-input LUTs
+\item 28,800 registers
+\end{itemize}
+\item 50 Block RAMs (BRAMs)
+\item 66 DSP Blocks (DSP48E1 with pre-adder, 25$\times$18 multiplier, 48-bit accumulator)
+\end{itemize}
+\end{itemize}
+%
+% ---------------------
+\item Memory
+% ---------------------
+%
+\begin{itemize}
+\item Micron 512MB DDR3L with 16-bit data bus (MT41K256M16TW-107:P)
+\item Micron 128Mb (16MB) QSPI Flash (MT25QL128ABA8E12-1SIT)
+\item Micron 8GB eMMC Flash (MTFC8GAKAJCN-4M IT)
+\end{itemize}
+%
+% ---------------------
+\item Interface I/O
+% ---------------------
+%
+\begin{itemize}
+\item 33.3333MHz PS reference clock (Microchip DSC1001DI1-033.3333T)
+\item 1 $\times$ PS bi-color LED
+\item 1 $\times$ PL bi-color LED
+\item Reset push button
+\item User push button
+\item User switch
+\end{itemize}
+%
+% ---------------------
+\item Communications
+% ---------------------
+%
+\begin{itemize}
+\item Murata ``Type 1DX'' (LBEE5KL1DX-883) wireless module with
+\begin{itemize}
+\item WiFi 802.11b/g/n
+\item Bluetooth 4.1 plus EDR (Enhanced Data Rate) and BLE (Bluetooth Low Energy)
+\end{itemize}
+\item USB 2.0 Host Controller (Microchip USB3320C ULPI PHY)
+\item 2 $\times$ PMod Connectors (16 GPIO)
+\item Arduino-compatible shield interface (22 GPIO)
+\item Digilent USB JTAG plus USB COM port interface (based on the FTDI FT2232H)
+\end{itemize}
+%
+% ---------------------
+\item Sensors
+% ---------------------
+%
+\begin{itemize}
+\item ST Micro LIS2DS12 Motion and Temperature sensor
+\item ST Micro MP34DT05 MEMS Microphone
+\end{itemize}
+%
+% ---------------------
+\item Power
+% ---------------------
+%
+\begin{itemize}
+\item Dialog DA9062 Power Management IC
+\item Auxiliary microUSB connector for USB host-mode power
+\end{itemize}
+%
+\end{itemize}
+%
+This tutorial is written for FPGA designers new to the Zynq processor. The
+tutorial provides cross-references to Avnet and Xilinx documentation, walks
+through several designs to familiarize the user with the Xilinx development tools,
+Zynq processor configuration, and programmable logic synthesis.
+
+% -----------------------------------------------------------------------------
+% MiniZed Block Diagram from the schematic
+% -----------------------------------------------------------------------------
+%
+% The MiniZed Hardware Guide has a similar block diagram (perhaps newer?).
+% The 2 page product brief has the same block diagram as the HW guide.
+%
+\begin{landscape}
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=210mm]
+    {figures/minized_schematic_block_diagram.png}
+  \end{center}
+  \caption{MiniZed block diagram (from the schematic~\cite{Avnet_MiniZed_Schematic_2017}).}
+  \label{fig:minized_schematic_block_diagram}
+\end{figure}
+\end{landscape}
+% -----------------------------------------------------------------------------

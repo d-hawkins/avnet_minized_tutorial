@@ -1,0 +1,977 @@
+% =============================================================================
+\section{Factory Restore}
+% =============================================================================
+\label{sec:factory_restore}
+
+The Avnet guide \emph{Restoring MiniZed to the Factory State}~\cite{Avnet_MiniZed_Restore_2018}
+describes how to restore the MiniZed to factory state. This section
+shows how to view the version information of U-Boot and Linux on a MiniZed,
+how to calculate the checksums of the images in on-board non-volatile memory,
+and how to compare those checksums to the recovery or user images.
+
+% -----------------------------------------------------------------------------
+\subsection{Viewing Tool and Software Versions}
+% -----------------------------------------------------------------------------
+\label{sec:restore_view_versions}
+
+To view the MiniZed software versions, start by setting the boot mode switch
+to Flash, connecting the board to your development machine using the USB
+JTAG/UART interface (see Figure~\ref{fig:minized_quick_start_diagram}), and
+configure a serial terminal for communication at 115200 baud 8N1.
+Hit enter and the MiniZed console output (for a device purchased in March 2019) was
+%
+\begin{verbatim}
+PetaLinux 2017.4 MiniZed /dev/ttyPS0
+
+MiniZed login:
+\end{verbatim}
+%
+Press the blue reset button (by the PMod connectors on the bottom right
+of Figure~\ref{fig:minized_quick_start_diagram}), press the enter key to
+stop U-Boot from loading Linux, and enter the \verb+version+ command to
+get details on the U-Boot version. The console output was
+%
+\begin{verbatim}
+U-Boot 2017.01 (Mar 22 2018 - 23:33:56 -0700)
+
+Board: Xilinx Zynq
+DRAM:  ECC disabled 512 MiB
+MMC:   Card did not respond to voltage select!
+sdhci@e0100000 - probe failed: -95
+sdhci_transfer_data: Error detected in status(0x208000)!
+Card did not respond to voltage select!
+
+SF: Detected n25q128 with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+*** Warning - bad CRC, using default environment
+
+In:    serial
+Out:   serial
+Err:   serial
+U-BOOT for MiniZed
+
+Hit any key to stop autoboot:  0
+Zynq>  version
+
+U-Boot 2017.01 (Mar 22 2018 - 23:33:56 -0700)
+arm-xilinx-linux-gnueabi-gcc (Linaro GCC 6.2-2016.11) 6.2.1 20161016
+GNU ld (GNU Binutils) 2.27.0.20160806
+Zynq>
+\end{verbatim}
+%
+Note that the PetaLinux prompt and U-Boot messages have different version strings.
+The PetaLinux prompt implies that Xilinx Vivado and PetaLinux tools version 2017.4
+were used to build PetaLinux, while the U-Boot version string implies
+2017.1 tools were used to build U-Boot.
+
+Type \verb+?+ and then press the enter key to see the U-Boot help menu. U-Boot can be
+used to read and write memory locations, read and program flash, boot standalone
+programs, real-time operating systems, and Linux. The example designs in this tutorial
+demonstrate some of these U-Boot features.
+
+\newpage
+Boot Linux using the \verb+boot+ command. The inital lines of the console output were
+%
+\begin{verbatim}
+Zynq> boot
+boot Petalinux
+reading image.ub
+43267036 bytes read in 14650 ms (2.8 MiB/s)
+## Loading kernel from FIT Image at 10000000 ...
+   Using 'conf@1' configuration
+   Trying 'kernel@0' kernel subimage
+     Description:  Linux Kernel
+     Type:         Kernel Image
+     Compression:  uncompressed
+     Data Start:   0x100000d4
+     Data Size:    3925272 Bytes = 3.7 MiB
+     Architecture: ARM
+     OS:           Linux
+     Load Address: 0x00008000
+     Entry Point:  0x00008000
+     Hash algo:    sha1
+     Hash value:   f2ac69bcdcf755b54af38b5fd870f843fb0e9bc7
+   Verifying Hash Integrity ... sha1+ OK
+## Loading ramdisk from FIT Image at 10000000 ...
+   Using 'conf@1' configuration
+   Trying 'ramdisk@0' ramdisk subimage
+     Description:  ramdisk
+     Type:         RAMDisk Image
+     Compression:  uncompressed
+     Data Start:   0x103c28d8
+     Data Size:    39323409 Bytes = 37.5 MiB
+     Architecture: ARM
+     OS:           Linux
+     Load Address: unavailable
+     Entry Point:  unavailable
+     Hash algo:    sha1
+     Hash value:   d57b450521fd302afdc95bfe2e7c521b08745d10
+   Verifying Hash Integrity ... sha1+ OK
+## Loading fdt from FIT Image at 10000000 ...
+   Using 'conf@1' configuration
+   Trying 'fdt@0' fdt subimage
+     Description:  Flattened Device Tree blob
+     Type:         Flat Device Tree
+     Compression:  uncompressed
+     Data Start:   0x103be6e0
+     Data Size:    16712 Bytes = 16.3 KiB
+     Architecture: ARM
+     Hash algo:    sha1
+     Hash value:   bd55217bdcb35db08dcfd467cfbbf0dd5e4cb754
+\end{verbatim}
+%
+The hash values for the kernel, RAM disk, and device tree can be compared
+to the versions in the restored image to confirm they are the same.
+Save a copy of the Linux boot messages, as they maybe useful later when
+building PetaLinux from scratch.
+
+\newpage
+Login at the Linux prompt as user \verb+root+ with password \verb+root+
+and type a few standard Linux commands to determine some detail about
+the Linux and hardware configuration;
+%
+\begin{verbatim}
+root@MiniZed:~# uname -a
+Linux MiniZed 4.9.0-xilinx-v2017.4 #1 SMP PREEMPT Thu Mar 22 22:22:16 MST 2018
+armv7l GNU/Linux
+
+root@MiniZed:~# mount
+rootfs on / type rootfs (rw,size=227296k,nr_inodes=56824)
+proc on /proc type proc (rw,relatime)
+sysfs on /sys type sysfs (rw,relatime)
+devtmpfs on /dev type devtmpfs (rw,relatime,size=227296k,nr_inodes=56824,mode=755)
+tmpfs on /run type tmpfs (rw,nosuid,nodev,mode=755)
+tmpfs on /var/volatile type tmpfs (rw,relatime)
+/dev/mmcblk1p1 on /run/media/mmcblk1p1 type vfat (rw,relatime,gid=6,fmask=0007,
+dmask=0007,allow_utime=0020,codepage=437,iocharset=iso8859-1,shortname=mixed,
+errors=remount-ro)
+devpts on /dev/pts type devpts (rw,relatime,gid=5,mode=620,ptmxmode=000)
+/dev/mmcblk1p1 on /mnt/emmc type vfat (rw,relatime,gid=6,fmask=0007,dmask=0007,
+allow_utime=0020,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro)
+
+root@MiniZed:~# df
+Filesystem           1K-blocks      Used Available Use% Mounted on
+devtmpfs                227296         4    227292   0% /dev
+tmpfs                   255204        84    255120   0% /run
+tmpfs                   255204        44    255160   0% /var/volatile
+/dev/mmcblk1p1          123089     58385     64704  47% /run/media/mmcblk1p1
+/dev/mmcblk1p1          123089     58385     64704  47% /mnt/emmc
+
+root@MiniZed:~# cat /proc/cpuinfo
+processor       : 0
+model name      : ARMv7 Processor rev 0 (v7l)
+BogoMIPS        : 666.66
+Features        : half thumb fastmult vfp edsp neon vfpv3 tls vfpd32
+CPU implementer : 0x41
+CPU architecture: 7
+CPU variant     : 0x3
+CPU part        : 0xc09
+CPU revision    : 0
+
+Hardware        : Xilinx Zynq Platform
+Revision        : 0003
+Serial          : 0000000000000000
+
+root@MiniZed:~# cat /proc/version
+Linux version 4.9.0-xilinx-v2017.4 (sroussea@xterra1) (gcc version 6.2.1 20161016
+(Linaro GCC 6.2-2016.11) ) #1 SMP PREEMPT Thu Mar 22 22:22:16 MST 2018
+
+root@MiniZed:~# poweroff
+\end{verbatim}
+%
+Per the recommendation on page 30 of the \emph{Getting Started Guide}~\cite{Avnet_MiniZed_GSG_2018},
+use the \verb+poweroff+ command before powering off the MiniZed to avoid corruption of the eMMC flash.
+
+\newpage
+The QSPI flash also contains a fallback Linux image. This image can be used when the eMMC flash has
+been erased. The fallback image can be booted from U-Boot as follows:
+%
+\begin{verbatim}
+Zynq> run boot_qspi
+Booting backup kernel from QSPI..
+SF: Detected n25q128 with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+device 0 offset 0x270000, size 0xd80000
+SF: 14155776 bytes @ 0x270000 Read: OK
+## Loading kernel from FIT Image at 10000000 ...
+   Using 'conf@1' configuration
+   Trying 'kernel@0' kernel subimage
+     Description:  Linux Kernel
+     Type:         Kernel Image
+     Compression:  uncompressed
+     Data Start:   0x100000d4
+     Data Size:    3925320 Bytes = 3.7 MiB
+     Architecture: ARM
+     OS:           Linux
+     Load Address: 0x00008000
+     Entry Point:  0x00008000
+     Hash algo:    sha1
+     Hash value:   8d758a5b6f7da43eecf5324a02ff10a78e139113
+   Verifying Hash Integrity ... sha1+ OK
+## Loading ramdisk from FIT Image at 10000000 ...
+   Using 'conf@1' configuration
+   Trying 'ramdisk@0' ramdisk subimage
+     Description:  ramdisk
+     Type:         RAMDisk Image
+     Compression:  uncompressed
+     Data Start:   0x103c2908
+     Data Size:    10018537 Bytes = 9.6 MiB
+     Architecture: ARM
+     OS:           Linux
+     Load Address: unavailable
+     Entry Point:  unavailable
+     Hash algo:    sha1
+     Hash value:   2f1d8fc5a9ce9dfbdf1ea753a23dcf7f0d881d55
+   Verifying Hash Integrity ... sha1+ OK
+## Loading fdt from FIT Image at 10000000 ...
+   Using 'conf@1' configuration
+   Trying 'fdt@0' fdt subimage
+     Description:  Flattened Device Tree blob
+     Type:         Flat Device Tree
+     Compression:  uncompressed
+     Data Start:   0x103be710
+     Data Size:    16712 Bytes = 16.3 KiB
+     Architecture: ARM
+     Hash algo:    sha1
+     Hash value:   bd55217bdcb35db08dcfd467cfbbf0dd5e4cb754
+\end{verbatim}
+%
+The hash values of the kernel, RAM disk, and device tree are different than
+the versions loaded from the eMMC.
+
+\newpage
+% -----------------------------------------------------------------------------
+\subsection{Restore Image Details}
+% -----------------------------------------------------------------------------
+\label{sec:restore_image_details}
+
+The MiniZed contains three non-volatile memory devices;
+%
+\begin{itemize}
+\item 2kbit EEPROM
+\item 128Mbit QSPI Flash
+\item 8GB eMMC Flash
+\end{itemize}
+%
+The 2kbit EEPROM contains the configuration for the FTDI FT2232H device.
+The Avnet restore procedure does not include restoring the EEPROM contents.
+The EEPROM contents can be read and saved using the
+\href{https://www.ftdichip.com/Support/Utilities.htm#FT_PROG}{FT\_PROG}
+tool from FTDI. All MiniZed boards ship with the same
+USB JTAG/UART serial number: \verb+1234-oj1+. Connecting multiple MiniZed
+boards to the same development machine at the same time requires the use
+of unique USB serial numbers, as under Windows, each USB serial number defines
+a unique COM port number. The FTDI FT\_PROG tool can be used to change the
+MiniZed FTDI FT2232H serial number. Do not change any other FT2232H parameters,
+otherwise the Digilent JTAG device will not be detected by the Xilinx tools
+as a JTAG programmer.
+
+The Avnet MiniZed documentation page has a link to a zip file containing
+the restore images~\cite{Avnet_MiniZed_Restore_2018}. The zip file contains
+the following files;
+%
+\begin{verbatim}
+Restoring MiniZed to Factory Status_03
++-- Programming files
+|   +-- Micron QSPI Flash
+|       +-- flash_fallback_7007S.bin
+|       +-- flash_only_boot_7007S.bin
+|       +-- zynq_fsbl.elf
++-- Restoring_MiniZed_to_Factory_Status_03.pdf
++-- USB memory stick files
+    +-- image.ub
+    +-- smallboot.bin
+    +-- wpa_supplicant.conf
+\end{verbatim}
+%
+The MiniZed factory QSPI image is \verb+flash_fallback_7007S.bin+,
+while the eMMC filesystem contains the files in \verb+USB memory stick files+.
+
+The images programmed in the MiniZed board QSPI flash and eMMC could be
+compared to the factory images using byte-by-byte comparisons, however,
+there is a simpler (and faster) solution: calculate and compare checksums.
+The MiniZed U-Boot image supports the \verb+crc32+ checksum (the U-Boot
+source provides support for additional checksum algorithms), and the MiniZed Linux image
+supports \verb+sha1sum+, \verb+sha256sum+, and \verb+sha512sum+.
+Table~\ref{tab:factory_image_checksums} contains the \verb+crc32+
+and \verb+sha1sum+ checksums for the restore images.
+
+% -----------------------------------------------------------------------------
+% Factory Image Checksums
+% -----------------------------------------------------------------------------
+%
+\begin{landscape}
+\begin{table}
+\caption{MiniZed Factory Restore Image Checksums.}
+\label{tab:factory_image_checksums}
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+      & Image Byte & \multicolumn{2}{c|}{Checksum}\\
+\cline{3-4}
+Image & Length & \verb+crc32+ & \verb+sha1+\\
+\hline
+\multicolumn{4}{|l|}{\bf U-Boot}\\
+\hline
+&&&\\
+\verb+flash_fallback_7007S.bin+  & \verb+0x00FC0BE4+ & \verb+0x005B7B3C+ & \verb+0x71511941C14604A88BDD57B0C7762444D1538B5B+\\
+\verb+flash_only_boot_7007S.bin+ & \verb+0x00FDA5F4+ & \verb+0x86771B07+ & \verb+0x191BE50A37CF5E7D453A67AE510264C1F2CDF89B+\\
+\verb+smallboot.bin+             & \verb+0x00FC0BE4+ & \verb+0x005B7B3C+ & \verb+0x71511941C14604A88BDD57B0C7762444D1538B5B+\\
+&&&\\
+\hline
+\multicolumn{4}{|l|}{\bf Linux}\\
+\hline
+&&&\\
+\verb+image.ub+ & \verb+0x00FC0BE4+ & \verb+0x005B7B3C+ & \verb+0xD618217182184862C69AB1559EF806665B7D0E83+\\
+&&&\\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+\end{landscape}
+
+% -----------------------------------------------------------------------------
+\subsubsection{QSPI Image Details}
+% -----------------------------------------------------------------------------
+
+The image in MiniZed QSPI flash can be viewed by copying the
+contents of the 16MB flash to DDR memory, and then reading the
+image from DDR memory. The U-Boot commands to detect the QSPI flash
+and copy 16MB (0x1000000) to DDR address 0x10000000 are
+%
+\begin{verbatim}
+Zynq> sf probe
+SF: Detected n25q128 with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+Zynq> sf read 10000000 0 1000000
+device 0 whole chip
+SF: 16777216 bytes @ 0x0 Read: OK
+\end{verbatim}
+%
+The QSPI image header can be displayed by reading the DDR memory
+%
+\begin{verbatim}
+Zynq> md 10000000 30
+10000000: eafffffe eafffffe eafffffe eafffffe    ................
+10000010: eafffffe eafffffe eafffffe eafffffe    ................
+10000020: aa995566 584c4e58 00000000 01010000    fU..XNLX........
+10000030: 00001700 00018008 00000000 00000000    ................
+10000040: 00018008 00000001 fc164530 00000000    ........0E......
+10000050: 00000000 00000000 00000000 00000000    ................
+10000060: 00000000 00000000 00000000 00000000    ................
+10000070: 00000000 00000000 00000000 00000000    ................
+10000080: 00000000 00000000 00000000 00000000    ................
+10000090: 00000000 00000000 000008c0 00000c80    ................
+100000a0: ffffffff 00000000 ffffffff 00000000    ................
+100000b0: ffffffff 00000000 ffffffff 00000000    ................
+\end{verbatim}
+%
+The BootROM Image Header format is defined in Table 6-5 of the Zynq
+TRM (p171~\cite{Xilinx_UG585_2018}).
+
+The U-Boot crc32 checksum for the QSPI image copied to DDR
+memory is
+%
+\begin{verbatim}
+Zynq> crc32 10000000 fc0be4
+crc32 for 10000000 ... 10fc0be3 ==> 005b7b3c
+\end{verbatim}
+%
+The checksum matches that for
+\verb+flash_fallback_7007S.bin+
+in Table~\ref{tab:factory_image_checksums}.
+
+\clearpage
+% -----------------------------------------------------------------------------
+\subsubsection{eMMC Image Details}
+% -----------------------------------------------------------------------------
+
+The eMMC images can be viewed from the MiniZed Linux console using:
+%
+\begin{verbatim}
+root@MiniZed:~# ls -al /mnt/emmc/
+total 58385
+drwxrwx---    2 root     disk           512 Jan  1  1970 .
+drwxr-xr-x    4 root     root            80 Mar 23 06:07 ..
+-rwxrwx---    1 root     disk      43267036 Jul 28  2017 image.ub
+-rwxrwx---    1 root     disk      16518116 Jul 28  2017 smallboot.bin
+-rwxrwx---    1 root     disk           177 Jul 28  2017 wpa_supplicant.conf
+
+root@MiniZed:~# od -Ax -tx4 -v -N 128 /mnt/emmc/image.ub
+000000 edfe0dd0 dc339402 38000000 f4319402
+000010 28000000 11000000 10000000 00000000
+000020 74000000 bc319402 00000000 00000000
+000030 00000000 00000000 01000000 00000000
+000040 03000000 04000000 64000000 3c9ab45a
+000050 03000000 24000000 00000000 6f422d55
+000060 6620746f 6d497469 20656761 20726f66
+000070 786e6c70 6d72615f 72656b20 006c656e
+
+root@MiniZed:~# od -Ax -tx4 -v -N 192 /mnt/emmc/smallboot.bin
+000000 eafffffe eafffffe eafffffe eafffffe
+000010 eafffffe eafffffe eafffffe eafffffe
+000020 aa995566 584c4e58 00000000 01010000
+000030 00001700 00018008 00000000 00000000
+000040 00018008 00000001 fc164530 00000000
+000050 00000000 00000000 00000000 00000000
+000060 00000000 00000000 00000000 00000000
+000070 00000000 00000000 00000000 00000000
+000080 00000000 00000000 00000000 00000000
+000090 00000000 00000000 000008c0 00000c80
+0000a0 ffffffff 00000000 ffffffff 00000000
+0000b0 ffffffff 00000000 ffffffff 00000000
+\end{verbatim}
+%
+The image checksums can be calculated via
+%
+\begin{verbatim}
+root@MiniZed:~# sha1sum /mnt/emmc/image.ub
+d618217182184862c69ab1559ef806665b7d0e83  /mnt/emmc/image.ub
+
+root@MiniZed:~# sha1sum /mnt/emmc/smallboot.bin
+71511941c14604a88bdd57b0c7762444d1538b5b  /mnt/emmc/smallboot.bin
+\end{verbatim}
+%
+The checksums match those in Table~\ref{tab:factory_image_checksums}.
+The \verb+wpa_supplicant.conf+ file on the MiniZed was different than
+the restore image, however, the user has to edit that file to match
+their setup, so that difference was expected.
+
+\clearpage
+% -----------------------------------------------------------------------------
+\subsubsection{U-Boot Image Versions and Checksums}
+% -----------------------------------------------------------------------------
+\label{sec:uboot_versions}
+
+This section contains the console output for U-Boot power-on-reset,
+\verb+version+, and \verb+crc32+ commands for the three Avnet restore
+images.
+
+\subsubsection*{Image: \textcolor{blue}{\texttt{flash\_fallback\_7007S.bin}}}
+%
+\begin{verbatim}
+U-Boot 2017.01 (Mar 22 2018 - 23:33:56 -0700)
+
+Board: Xilinx Zynq
+DRAM:  ECC disabled 512 MiB
+MMC:   Card did not respond to voltage select!
+sdhci@e0100000 - probe failed: -95
+sdhci_transfer_data: Error detected in status(0x208000)!
+Card did not respond to voltage select!
+
+SF: Detected n25q128 with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+*** Warning - bad CRC, using default environment
+
+In:    serial
+Out:   serial
+Err:   serial
+U-BOOT for MiniZed
+
+Hit any key to stop autoboot:  0
+Zynq> version
+
+U-Boot 2017.01 (Mar 22 2018 - 23:33:56 -0700)
+arm-xilinx-linux-gnueabi-gcc (Linaro GCC 6.2-2016.11) 6.2.1 20161016
+GNU ld (GNU Binutils) 2.27.0.20160806
+
+Zynq> sf probe
+SF: Detected n25q128 with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+Zynq> sf read 10000000 0 1000000
+device 0 whole chip
+SF: 16777216 bytes @ 0x0 Read: OK
+Zynq> crc32 10000000 fc0be4
+crc32 for 10000000 ... 10fc0be3 ==> 005b7b3c
+\end{verbatim}
+
+\subsubsection*{Image: \textcolor{blue}{\texttt{flash\_only\_boot\_7007S.bin}}}
+%
+\begin{verbatim}
+U-Boot 2016.07 (Jul 27 2017 - 21:56:59 -0700)
+
+DRAM:  ECC disabled 512 MiB
+MMC:   sdhci@e0100000: 0, sdhci@e0101000: 1
+SF: Detected N25Q128 with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+*** Warning - bad CRC, using default environment
+
+In:    serial
+Out:   serial
+Err:   serial
+U-BOOT for
+
+Hit any key to stop autoboot:  0
+Zynq> version
+
+U-Boot 2016.07 (Jul 27 2017 - 21:56:59 -0700)
+arm-linux-gnueabihf-gcc (Linaro GCC 5.2-2015.11-2) 5.2.1 20151005
+GNU ld (Linaro_Binutils-) 2.25.0 Linaro 2016_02
+Zynq> sf probe
+SF: Detected N25Q128 with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+Zynq> sf read 10000000 0 1000000
+device 0 whole chip
+SF: 16777216 bytes @ 0x0 Read: OK
+Zynq> crc32 10000000 fda5f4
+crc32 for 10000000 ... 10fda5f3 ==> 86771b07
+\end{verbatim}
+
+\subsubsection*{Image: \textcolor{blue}{\texttt{smallboot.bin}}}
+%
+\begin{verbatim}
+U-Boot 2017.01 (Mar 22 2018 - 23:33:56 -0700)
+
+Board: Xilinx Zynq
+DRAM:  ECC disabled 512 MiB
+MMC:   Card did not respond to voltage select!
+sdhci@e0100000 - probe failed: -95
+sdhci_transfer_data: Error detected in status(0x208000)!
+Card did not respond to voltage select!
+
+SF: Detected n25q128 with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+*** Warning - bad CRC, using default environment
+
+In:    serial
+Out:   serial
+Err:   serial
+U-BOOT for MiniZed
+
+Hit any key to stop autoboot:  0
+Zynq> version
+
+U-Boot 2017.01 (Mar 22 2018 - 23:33:56 -0700)
+arm-xilinx-linux-gnueabi-gcc (Linaro GCC 6.2-2016.11) 6.2.1 20161016
+GNU ld (GNU Binutils) 2.27.0.20160806
+
+Zynq> sf probe
+SF: Detected n25q128 with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+Zynq> sf read 10000000 0 1000000
+device 0 whole chip
+SF: 16777216 bytes @ 0x0 Read: OK
+Zynq> crc32 10000000 fc0be4
+crc32 for 10000000 ... 10fc0be3 ==> 005b7b3c
+\end{verbatim}
+%
+The console messages from \textcolor{blue}{\texttt{smallboot.bin}} are
+identical to \textcolor{blue}{\texttt{flash\_fallback\_7007S.bin}}. The
+easiest way to determine which image is programmed, is
+to calculate the \verb+crc32+ checksum using the image length and
+expected values in Table~\ref{tab:factory_image_checksums}.
+
+\clearpage
+% -----------------------------------------------------------------------------
+\subsection{QSPI Flash Programming}
+% -----------------------------------------------------------------------------
+\label{sec:qspi_flash_programming}
+
+The Avnet MiniZed factory restore document~\cite{Avnet_MiniZed_Restore_2018}
+shows how to program the QSPI flash using the Xilinx Software Command-line
+Tool (XSCT) and the Vivado GUI. The restore images were copied to the
+location \verb+c:\temp\minized+ prior to the operations in the next section.
+
+% -----------------------------------------------------------------------------
+\subsubsection{XSCT \texttt{program\_flash}}
+% -----------------------------------------------------------------------------
+
+XSCT can be started under Windows by selecting the tool from
+\emph{Xilinx Design Tools}$\rightarrow$\emph{SDK 2019.1}$\rightarrow$\emph{Xilinx
+Software Command Line Tool}. Once the tool starts, change directory to
+the folder containing the restore images and issue the \verb+program_flash+
+command using the Tcl exec command, eg.,
+%
+\begin{verbatim}
+xsct% cd {c:\temp\minized}
+xsct% exec program_flash -f flash_only_boot_7007S.bin -fsbl zynq_fsbl.elf
+  -flash_type qspi_single
+\end{verbatim}
+%
+Running the \verb+program_flash+ command using the Tcl \verb+exec+ command
+supresses the command console output until the flash programming completes.
+More insight into the flash programming is gained if the tool is
+run directly, so that the console output is seen while the flash is
+programmed.
+
+The location of the \verb+program_flash+ tool can be determined using
+%
+\begin{verbatim}
+xsct% exec which program_flash
+C:\software\Xilinx\SDK\2019.1\bin\program_flash
+\end{verbatim}
+%
+The MiniZed flash was erased using the U-Boot command
+%
+\begin{verbatim}
+Zynq> sf probe
+SF: Detected N25Q128 with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+Zynq> sf erase 0 1000000
+SF: 16777216 bytes @ 0x0 Erased: OK
+\end{verbatim}
+%
+and the Flash/JTAG switch changed to the JTAG position. The flash programming
+tool was then run from a Cygwin console using the full path to the
+application via
+%
+\begin{verbatim}
+$ cd c:/temp/minized
+$ C:/software/Xilinx/SDK/2019.1/bin/program_flash -f flash_only_boot_7007S.bin
+  -fsbl zynq_fsbl.elf -flash_type qspi_single
+
+****** Xilinx Program Flash
+****** Program Flash v2019.1 (64-bit)
+  **** SW Build 2552052 on Fri May 24 14:49:42 MDT 2019
+    ** Copyright 1986-2019 Xilinx, Inc. All Rights Reserved.
+
+Connected to hw_server @ TCP:localhost:3121
+Available targets and devices:
+Target 0 : jsn-MiniZed V1-1234-oj1A
+        Device 0: jsn-MiniZed V1-1234-oj1A-4ba00477-0
+
+Retrieving Flash info...
+
+Initialization done, programming the memory
+===== mrd->addr=0xF800025C, data=0x00000000 =====
+BOOT_MODE REG = 0x00000000
+Downloading FSBL...
+Running FSBL...
+Finished running FSBL.
+===== mrd->addr=0xF8000110, data=0x000FA220 =====
+READ: ARM_PLL_CFG (0xF8000110) = 0x000FA220
+===== mrd->addr=0xF8000100, data=0x00028008 =====
+READ: ARM_PLL_CTRL (0xF8000100) = 0x00028008
+===== mrd->addr=0xF8000120, data=0x1F000200 =====
+READ: ARM_CLK_CTRL (0xF8000120) = 0x1F000200
+===== mrd->addr=0xF8000118, data=0x00113220 =====
+READ: IO_PLL_CFG (0xF8000118) = 0x00113220
+===== mrd->addr=0xF8000108, data=0x00024008 =====
+READ: IO_PLL_CTRL (0xF8000108) = 0x00024008
+Info:  Remapping 256KB of on-chip-memory RAM memory to 0xFFFC0000.
+===== mrd->addr=0xF8000008, data=0x00000000 =====
+===== mwr->addr=0xF8000008, data=0x0000DF0D =====
+MASKWRITE: addr=0xF8000008, mask=0x0000FFFF, newData=0x0000DF0D
+===== mwr->addr=0xF8000910, data=0x000001FF =====
+===== mrd->addr=0xF8000004, data=0x00000000 =====
+===== mwr->addr=0xF8000004, data=0x0000767B =====
+MASKWRITE: addr=0xF8000004, mask=0x0000FFFF, newData=0x0000767B
+
+U-Boot 2019.01-07026-gae88108-dirty (Mar 22 2019 - 04:38:02 -0600)
+
+Model: Zynq CSE QSPI Board
+DRAM:  256 KiB
+WARNING: Caches not enabled
+In:    dcc
+Out:   dcc
+Err:   dcc
+Zynq> sf probe 0 0 0
+Warning: SPI speed fallback to 100 kHz
+SF: Detected n25q128 with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+Zynq> Sector size = 65536.
+f probe 0 0 0
+Performing Erase Operation...
+sf erase 0 FE0000
+SF: 16646144 bytes @ 0x0 Erased: OK
+Zynq> Erase Operation successful.
+INFO: [Xicom 50-44] Elapsed time = 1 sec.
+Performing Program Operation...
+0%...sf write FFFC0000 0 20000
+device 0 offset 0x0, size 0x20000
+SF: 131072 bytes @ 0x0 Written: OK
+Zynq> sf write FFFC0000 20000 20000
+device 0 offset 0x20000, size 0x20000
+SF: 131072 bytes @ 0x20000 Written: OK
+
+... [more sector programming messages] ...
+
+Zynq> sf write FFFC0000 FA0000 20000
+device 0 offset 0xfa0000, size 0x20000
+SF: 131072 bytes @ 0xfa0000 Written: OK
+Zynq> 100%
+sf write FFFC0000 FC0000 1A5F4
+device 0 offset 0xfc0000, size 0x1a5f4
+SF: 108020 bytes @ 0xfc0000 Written: OK
+Zynq> Program Operation successful.
+INFO: [Xicom 50-44] Elapsed time = 67 sec.
+
+Flash Operation Successful
+\end{verbatim}
+%
+The output from \verb+program_flash+ shows that it downloads the FSBL,
+a U-Boot image, and then uses U-Boot commands to program the flash.
+Interesting! The U-Boot flash programming occurs much faster than
+when using the UART, as the U-Boot image used by
+\verb+program_flash+ uses the ARM JTAG Debug Communications Channel
+(DCC) to transfer sectors to U-Boot for programming to flash:
+the initial U-Boot console message shows the use of \verb+dcc+ for
+stdin, stdout and stderr.
+
+% -----------------------------------------------------------------------------
+\subsubsection{Vivado Flash Programming}
+% -----------------------------------------------------------------------------
+
+The Avnet MiniZed factory restore document~\cite{Avnet_MiniZed_Restore_2018}
+shows how to use the \emph{Vivado Hardware Manager} to program the QSPI flash.
+When I first followed the procedure using the flash images located
+in the folder generated by unzipping the restore images zip file,
+Vivado would pop-up an error dialog with the message
+\verb+[Labtools 27-3161] Flash Programming Unsuccessful+. The Vivado
+console did not provide any insight into what might be wrong.
+%
+Flash programming works if the restore files are first copied to
+\verb+c:/temp/minized+.
+
+The Vivado Tcl console output for programming of the image \verb+flash_fallback_7007S.bin+
+was
+%
+\begin{verbatim}
+program_hw_cfgmem -hw_cfgmem [ get_property PROGRAM.HW_CFGMEM
+  [lindex [get_hw_devices xc7z007s_1] 0]]
+
+Performing Erase Operation...
+Erase Operation successful.
+INFO: [Xicom 50-44] Elapsed time = 28 sec.
+
+Performing Program Operation...
+Program Operation successful.
+INFO: [Xicom 50-44] Elapsed time = 68 sec.
+
+Performing Verify Operation...
+INFO: [Xicom 50-44] Elapsed time = 91 sec.
+Verify Operation successful.
+
+INFO: [Labtoolstcl 44-377] Flash programming completed successfully
+\end{verbatim}
+%
+After programming, the Flash/JTAG boot mode switch was switched to Flash
+mode, U-Boot booted, and the procedure in Section~\ref{sec:uboot_versions}
+used to confirm the U-Boot version and checksum.
+
+\clearpage
+% -----------------------------------------------------------------------------
+\subsection{Restore Procedure}
+% -----------------------------------------------------------------------------
+\label{sec:restore_procedure}
+
+The Avnet MiniZed factory restore procedure is~\cite{Avnet_MiniZed_Restore_2018}:
+%
+\begin{enumerate}
+\item Power-on the MiniZed and program the QSPI flash with the flash-only image.
+\item Power-on the MiniZed with the additional USB power source connected and
+a USB stick containing the files to program to the eMMC, boot from the flash-only
+image, and run the scripts that program the eMMC.
+\item Program the QSPI flash with the fallback image.
+\end{enumerate}
+%
+To ensure the restore procedure works consistently, the MiniZed eMMC and
+QSPI flash can first be erased. The following steps were performed on a
+MiniZed board programmed with the QSPI U-Boot image
+\verb+flash_fallback_7007S.bin+.
+%
+\begin{enumerate}
+% -----------------------------------------------------------------------------
+\item \textbf{Erase eMMC Flash}
+% -----------------------------------------------------------------------------
+
+The fallback Linux image was booted from U-Boot using the command
+\verb+run boot_qspi+. The eMMC partitions are then erased using
+the \verb+fdisk+ utility via
+%
+\begin{verbatim}
+root@MiniZed:~# fdisk /dev/mmcblk1
+
+The number of cylinders for this disk is set to 232448.
+There is nothing wrong with that, but this is larger than 1024,
+and could in certain setups cause problems with:
+1) software that runs at boot time (e.g., old versions of LILO)
+2) booting and partitioning software from other OSs
+   (e.g., DOS FDISK, OS/2 FDISK)
+
+Command (m for help): p
+
+Disk /dev/mmcblk1: 7616 MB, 7616856064 bytes
+4 heads, 16 sectors/track, 232448 cylinders
+Units = cylinders of 64 * 512 = 32768 bytes
+
+        Device Boot      Start         End      Blocks  Id System
+/dev/mmcblk1p1               1        3907      125016  83 Linux
+
+Command (m for help): d
+Selected partition 1
+
+Command (m for help): p
+
+Disk /dev/mmcblk1: 7616 MB, 7616856064 bytes
+4 heads, 16 sectors/track, 232448 cylinders
+Units = cylinders of 64 * 512 = 32768 bytes
+
+        Device Boot      Start         End      Blocks  Id System
+
+Command (m for help): w
+The partition table has been altered.
+Calling ioctl() to re-read partition table
+fdisk: WARNING: rereading partition table failed, kernel still uses old table:
+Device or resource busy
+root@MiniZed:~# reboot
+\end{verbatim}
+%
+In this example console output, the \verb+p+ command was used to print the
+partitions (there was only one), and the \verb+d+ command was used to delete
+the partition.
+
+After reboot, halt the U-Boot boot sequence, start Linux using
+\verb+run boot_qspi+, and use \verb+fdisk+ to confirm there are no
+partitions on the eMMC. U-Boot can also be used to view the
+empty partition table via
+%
+\begin{verbatim}
+Zynq> mmc dev 1
+sdhci_transfer_data: Error detected in status(0x208000)!
+switch to partitions #0, OK
+mmc1(part 0) is current device
+Zynq> mmc part
+
+Partition Map for MMC device 1  --   Partition Type: DOS
+
+Part    Start Sector    Num Sectors     UUID            Type
+Zynq>
+\end{verbatim}
+%
+
+% -----------------------------------------------------------------------------
+\item \textbf{Erase QSPI Flash}
+% -----------------------------------------------------------------------------
+
+The U-Boot commands to erase QSPI flash are
+%
+\begin{verbatim}
+Zynq> sf probe
+SF: Detected n25q128 with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+Zynq> sf erase 0 1000000
+SF: 16777216 bytes @ 0x0 Erased: OK
+\end{verbatim}
+%
+Power-down the board (remove the USB connections), and change the Flash/JTAG
+boot mode switch to JTAG mode.
+
+% -----------------------------------------------------------------------------
+\item \textbf{Program QSPI Flash with} \verb+flash_only_boot_7007S.bin+
+% -----------------------------------------------------------------------------
+
+Use one of the flash programming procedures outlined in
+Section~\ref{sec:qspi_flash_programming} to program the image.
+After programming, power-down the board, and change the Flash/JTAG boot
+mode switch to Flash mode.
+
+% -----------------------------------------------------------------------------
+\item \textbf{Prepare a USB flash drive}
+% -----------------------------------------------------------------------------
+
+Format a USB flash drive in FAT or FAT32 format, and copy the restore image
+files from within the zip file:
+%
+\begin{verbatim}
++-- USB memory stick files
+    +-- image.ub
+    +-- smallboot.bin
+    +-- wpa_supplicant.conf
+\end{verbatim}
+%
+onto the USB drive. Edit \verb+wpa_supplicant.conf+ to match your local
+WiFi network settings.
+
+% -----------------------------------------------------------------------------
+\item \textbf{Power the MiniZed with two USB cables}
+% -----------------------------------------------------------------------------
+
+The MiniZed USB host-mode interface is used to access the USB flash drive.
+The power for the USB host-mode interface is provided by the second
+micro-USB connector identified with the label \emph{Auxiliary Power} in
+Figure~\ref{fig:minized_quick_start_diagram}.
+
+Insert the USB flash drive in the MiniZed USB host-mode connector, and
+connect both micro-USB connectors to your development host. The flash-only
+boot image contains Linux. The Linux version information is
+%
+\begin{verbatim}
+PetaLinux 2016.4 plnx_arm /dev/ttyPS0
+
+plnx_arm login: root
+Password:
+root@plnx_arm:~# uname -a
+Linux plnx_arm 4.6.0-xilinx #1 SMP PREEMPT Thu Jul 27 22:24:51 PDT 2017
+armv7l GNU/Linux
+\end{verbatim}
+
+% -----------------------------------------------------------------------------
+\item \textbf{Restore MiniZed Linux}
+% -----------------------------------------------------------------------------
+
+The Linux commands used to restore the MiniZed eMMC Linux installation to factory state are
+implemented in the script \verb+onetest.sh+ (p16~\cite{Avnet_MiniZed_Restore_2018}).
+The location and contents of the script can be viewed via
+%
+\begin{verbatim}
+root@plnx_arm:~# which onetest.sh
+/usr/local/bin/onetest.sh
+root@plnx_arm:~# cat /usr/local/bin/onetest.sh
+\end{verbatim}
+%
+The script creates a DOS partition on the eMMC, formats the partition to use a FAT32
+filesystem, mounts the eMMC filesystem, mounts the USB flash stick, copies the files
+from the USB stick to eMMC, programs the QSPI flash with \verb+smallboot.bin+,
+loads the WiFi driver, brings up the WiFi interface, runs the I2C and LED
+test application, and then shuts down the system.
+
+Run the script. Programming the QSPI flash via the \verb+flashcp+ command takes
+the most time. The I2C and LED test application will run until you press a key,
+and then the board will shutdown.
+
+Press the MiniZed reset button, interrupt the U-Boot boot process, and confirm
+the U-Boot checksum is that of \verb+smallboot.bin+.
+
+% -----------------------------------------------------------------------------
+\item \textbf{Program QSPI Flash with} \verb+flash_fallback_7007S.bin+
+% -----------------------------------------------------------------------------
+
+The Avnet restore procedure lists this as an optional step
+(p21~\cite{Avnet_MiniZed_Restore_2018}).
+Use one of the flash programming procedures outlined in
+Section~\ref{sec:qspi_flash_programming} to program the fallback image.
+
+% -----------------------------------------------------------------------------
+\item \textbf{MiniZed Tests}
+% -----------------------------------------------------------------------------
+
+The Avnet restore procedure has instructions for testing the MiniZed
+%
+\begin{itemize}
+\item Bluetooth (p18~\cite{Avnet_MiniZed_Restore_2018})
+\item The Power Management controller (p19~\cite{Avnet_MiniZed_Restore_2018})
+\item Motion sensor and GPIO LEDs (p20~\cite{Avnet_MiniZed_Restore_2018})
+\end{itemize}
+
+\newpage
+% -----------------------------------------------------------------------------
+\item \textbf{Save the U-Boot Environment to QSPI Flash}
+% -----------------------------------------------------------------------------
+
+If the flash sector containing the environment is blank, or the CRC
+is incorrect, the U-Boot power-on messages contain the warning
+%
+\begin{verbatim}
+*** Warning - bad CRC, using default environment
+\end{verbatim}
+%
+This warning can be eliminated by saving the U-Boot environment.
+%
+\begin{verbatim}
+Zynq> saveenv
+Saving Environment to SPI Flash...
+SF: Detected n25q128 with page size 256 Bytes, erase size 64 KiB, total 16 MiB
+Erasing SPI flash...Writing to SPI flash...done
+\end{verbatim}
+%
+The environment sector does not need to be erased, as U-Boot does that
+before writing to the SPI flash. The environment sector can be erased via
+%
+\begin{verbatim}
+Zynq> sf erase ff0000 10000
+SF: 65536 bytes @ 0xff0000 Erased: OK
+\end{verbatim}
+%
+After erasing the environment section, press the reset button, halt the U-Boot boot
+sequence, and the CRC error message will be present in the U-Boot console
+messages.
+\end{enumerate}

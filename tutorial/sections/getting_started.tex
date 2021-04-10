@@ -1,0 +1,50 @@
+% =============================================================================
+\section{MiniZed Getting Started (Out-of-the-Box)}
+% =============================================================================
+
+% -----------------------------------------------------------------------------
+% MiniZed Quick Start Peripherals Diagram
+% -----------------------------------------------------------------------------
+%
+\begin{figure}[t]
+  \begin{center}
+    \includegraphics[width=\textwidth]
+    {figures/minized_quick_start_diagram.png}
+  \end{center}
+  \caption{MiniZed peripherals diagram (from the Quick Start Card~\cite{Avnet_MiniZed_QSC_2017}).}
+  \label{fig:minized_quick_start_diagram}
+\end{figure}
+% -----------------------------------------------------------------------------
+
+Figure~\ref{fig:minized_quick_start_diagram} shows a photo of the MiniZed
+board from the Avnet \emph{Quick Start Card}~\cite{Avnet_MiniZed_QSC_2017}.
+The Avnet MiniZed \emph{Quick Start Card} and \emph{Getting Started
+Guide}~\cite{Avnet_MiniZed_GSG_2018} contain instructions
+on how to start using the MiniZed. This section assumes that you have
+gone through both of these documents and are ready to learn more
+about how the MiniZed works.
+
+The MiniZed is powered via the USB JTAG/UART shown in
+Figure~\ref{fig:minized_quick_start_diagram} (on the left side).
+The USB JTAG/UART interface is a Digilent design\footnote{Digilent provides
+development boards to the Xilinx University Program, and is part of National Instruments.}.
+The USB JTAG/UART circuit uses the FTDI FT2232H dual USB-to-UART/FIFO
+controller: with the JTAG interface implemented on the first channel,
+and the UART implemented on the second channel. The MiniZed schematic
+shows the circuit on page 6~\cite{Avnet_MiniZed_Schematic_2017}.
+The circuit shows that the FTDI interface can also be used to toggle the
+MiniZed (power manager) Power-on-Reset (POR) and (Zynq) System Reset
+(SRST)\footnote{The MiniZed hardware user guide contains a block diagram of
+the reset sources in Figure 7 on page 22~\cite{Avnet_MiniZed_HW_2017}.}.
+
+The MiniZed boots from QSPI flash, loads the Xilinx-generated
+First Stage Boot Loader (FSBL), which configures the FPGA programmable
+logic (causing the blue LED to turn on) and loads U-Boot
+(the Second State Boot Loader), and U-Boot then loads Linux from
+the eMMC card. The designs in this tutorial use both the QSPI and eMMC
+flash. Appendix~\ref{sec:factory_restore} shows how to view
+the MiniZed U-Boot and Linux versions, and how to restore the
+board to factory condition. Restoring the board to factory condition
+allows the next user to begin using the MiniZed from the out-of-the-box
+starting point.
+

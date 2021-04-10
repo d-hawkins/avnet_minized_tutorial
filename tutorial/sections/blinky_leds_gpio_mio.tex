@@ -1,0 +1,685 @@
+%------------------------------------------------------------------------------
+\subsection{PS bicolor LED control via U-Boot}
+%------------------------------------------------------------------------------
+
+The MiniZed schematic (p4~\cite{Avnet_MiniZed_Schematic_2017}) shows that the
+PS bicolor LED is controlled by the Zynq GPIO signals MIO52
+(\verb+PS_LED_R+) and MIO53 (\verb+PS_LED_G+).
+%
+The Zynq TRM describes the GPIO multiplexed I/O (MIO) and extended multiplexed
+I/O (EMIO) in Chapter 14~\cite{Xilinx_UG585_2018}.
+%
+Figure~\ref{fig:zynq_gpio_block_diagram} shows the GPIO block diagram;
+banks 0 and 1 connect to the MIO, while banks 2 and 3 connect to the EMIO.
+%
+Figure~\ref{fig:zynq_gpio_block_diagram} shows the GPIO control registers.
+The GPIO control register definitions and location in the Zynq address map
+is defined in Appendix B.19~\cite{Xilinx_UG585_2018}. The GPIO registers
+are located at address 0xE000A000.
+
+The PS bicolor LED is controlled by MIO bits 52 and 53 which are located in GPIO
+bank 1. The GPIO bank 1 control registers are; \verb+DATA+ (0xE000A00C),
+\verb+DIRM+ (0xE000A244), and \verb+OEN+ (0xE000A248) registers.
+%
+The PS bicolor LED can be controlled from U-Boot as follows:
+%
+\begin{verbatim}
+# Set the direction
+Zynq> mw e000a244 00300000
+
+# Enable the output (the bicolor LED turns off)
+Zynq> mw e000a248 00300000
+
+# Write to the registers using the mask
+Zynq> mw e000a00c ffcf0000  # off
+Zynq> mw e000a00c ffcf0010  # red
+Zynq> mw e000a00c ffcf0020  # green
+Zynq> mw e000a00c ffcf0030  # red+green
+\end{verbatim}
+%
+The PL LEDs can also be controlled using U-Boot commands, however, the
+programmable logic first needs to be configured with a design that
+either routes the EMIO to the LEDs, or implements the AXI GPIO that
+controls the LEDs. Using U-Boot for read and write access to Zynq PS
+registers and PL designs is a simple, but powerful, debugging tool.
+
+\clearpage
+% -----------------------------------------------------------------------------
+% Zynq GPIO Block Diagram
+% -----------------------------------------------------------------------------
+%
+\begin{figure}[p]
+  \begin{center}
+    \includegraphics[width=0.5\textwidth]
+    {figures/zynq_gpio_block_diagram.png}
+  \end{center}
+  \caption{Zynq GPIO block diagram (from Figure 14-1~\cite{Xilinx_UG585_2018}).}
+  \label{fig:zynq_gpio_block_diagram}
+\end{figure}
+% -----------------------------------------------------------------------------
+
+% -----------------------------------------------------------------------------
+% Zynq GPIO Registers
+% -----------------------------------------------------------------------------
+%
+\begin{figure}[p]
+  \begin{center}
+    \includegraphics[width=0.75\textwidth]
+    {figures/zynq_gpio_registers.png}
+  \end{center}
+  \caption{Zynq GPIO control registers (from Figure 14-2~\cite{Xilinx_UG585_2018}).}
+  \label{fig:zynq_gpio_registers}
+\end{figure}
+% -----------------------------------------------------------------------------
+
+\clearpage
+%------------------------------------------------------------------------------
+\subsection{PS bicolor LED control via GPIO MIO}
+%------------------------------------------------------------------------------
+\label{sec:blinky_gpio_mio}
+
+The PS bicolor LED control via the GPIO MIO design uses only the Processor
+System (PS), it does not use the Programmable Logic (PL).
+%
+The Xilinx Vivado tool is used to configured the Zynq Processor, and
+the Xilinx Software Development Kit (SDK) is used to develop a bare-metal
+application to blink the bicolor LED. The PS bicolor LED design duplicates
+many of the steps found in Avnet MiniZed tutorials 01, 02, and
+04~\cite{Avnet_MiniZed_Tutorial01_2018,Avnet_MiniZed_Tutorial02_2018,Avnet_MiniZed_Tutorial04_2018}.
+The Avnet tutorials should be reviewed in conjunction with this design.
+
+\begin{enumerate}
+%------------------------------------------------------------------------------
+\item \textcolor{blue}{\textbf{Vivado Project Creation}}
+%------------------------------------------------------------------------------
+
+Create the MiniZed board \verb+blinky_gpio_mio+ project:
+%
+\begin{enumerate}
+\item Start Vivado.
+\item Under \emph{Quick Start}, click on \emph{Create Project}.
+\item {\bf Create a New Vivado Project}
+%
+\begin{itemize}
+\item Click \emph{Next}
+\end{itemize}
+%
+\item {\bf Project Name}
+%
+\begin{itemize}
+\item \emph{Project name}: \verb+blinky_gpio_mio+
+\item \emph{Project location}: \verb+c:/temp/minized/blinky_gpio_mio/vwork+
+\item Uncheck \emph{Create project subdirectory}
+\item Click \emph{Next}
+\end{itemize}
+%
+The project location specifies the Vivado work directory, \verb+vwork+,
+where Vivado generates the project files. After the GPIO MIO project has
+been completed, a script is developed that automates the project generation.
+%
+\item {\bf Project Dialog}
+%
+\begin{itemize}
+\item Select the \emph{RTL Project} bullet
+\item Check \emph{Do not specify sources at this time}
+\item Click \emph{Next}
+\end{itemize}
+%
+\item {\bf Default Part}
+%
+\begin{itemize}
+\item Click on the \emph{Boards} tab
+\item On the \emph{Vendor} pull-down, select \emph{em.avnet.com}
+\item Select the \emph{MiniZed} in the board list
+\item Click \emph{Next}
+\end{itemize}
+%
+\item {\bf New Project Summary}
+%
+\begin{itemize}
+\item Click \emph{Finish}
+\end{itemize}
+%
+\end{enumerate}
+%
+%------------------------------------------------------------------------------
+\item \textcolor{blue}{\textbf{Vivado Block Diagram Creation}}
+%------------------------------------------------------------------------------
+%
+\begin{enumerate}
+%
+\item In the \emph{Project Manager}, under \emph{IP Integrator},
+select \emph{Create Block Design}.
+%
+\item {\bf Create Block Design}
+%
+\begin{itemize}
+\item \emph{Design name}: \verb+system+
+\item \emph{Directory}: \verb+<Local to Project>+
+\item \emph{Specify Source set}: \verb+Design Sources+
+\item Click \emph{OK}
+\end{itemize}
+%
+\newpage
+\item {\bf Add the Zynq Processor}
+%
+\begin{itemize}
+\item Click the `+' in the middle of the design area to open the IP list
+\item In the \emph{Search} bar enter \verb+Zynq+
+\item Double-click on \verb+ZYNQ7 Processing System+ to add the Zynq to
+the design
+\item In the {\bf Block Properties} dialog, change the name from
+\verb+processing_system7_0+ to \verb+zynq+.
+\end{itemize}
+%
+\item {\bf Run Block Automation}
+%
+\begin{itemize}
+\item Click on the blue hyperlink \textcolor{blue}{Run Block Automation}
+\item Accept the block automation defaults by clicking \emph{OK}
+\end{itemize}
+%
+\end{enumerate}
+%
+% -----------------------------------------------------------------------------
+% PS bicolor LED GPIO MIO Design - Vivado Block Diagram
+% -----------------------------------------------------------------------------
+%
+% Installed "A Ruler for Windows" and set the Diagram GUI detached
+% window size to 5in x 10in for screen capture
+%
+\begin{figure}[t]
+  \begin{minipage}{\textwidth}
+    \begin{center}
+    \includegraphics[width=0.8\textwidth]
+    {figures/blinky_gpio_mio_vivado_diagram_a.png}\\
+    (a) Zynq processor
+    \end{center}
+  \end{minipage}
+  \vskip5mm
+  \begin{minipage}{\textwidth}
+    \begin{center}
+    \includegraphics[width=0.8\textwidth]
+    {figures/blinky_gpio_mio_vivado_diagram_b.png}\\
+    (c) Zynq processor after block automation
+    \end{center}
+  \end{minipage}
+  \caption{PS bicolor LED control via GPIO MIO design Vivado diagram window.}
+  \label{fig:blinky_gpio_mio_vivado_diagram}
+\end{figure}
+% -----------------------------------------------------------------------------
+%
+Figure~\ref{fig:blinky_gpio_mio_vivado_diagram}(a) shows the diagram
+window after adding the Zynq to the \verb+system+ design.
+Figure~\ref{fig:blinky_gpio_mio_vivado_diagram}(b) shows the
+diagram window after running block automation.
+%
+Block automation configures the Zynq processor using the board
+presets, \verb+preset.xml+, which is part of the MiniZed
+board definition files (BDF) located in the directory:
+%
+\begin{verbatim}
+C:\software\Xilinx\Vivado\2019.1\data\boards\board_files\minized\1.2\
+\end{verbatim}
+%
+This example uses the MiniZed Zynq processor defaults. Later design examples
+customize the Zynq processor.
+%
+%------------------------------------------------------------------------------
+\item \textcolor{blue}{\textbf{Vivado Synthesis}}
+%------------------------------------------------------------------------------
+
+The need for \emph{Synthesis} in a design that does not use the programmable
+logic sounds redundant. However, the Zynq design flow uses Vivado to configure
+the (required) Zynq processor system and the (optional) programmable logic.
+%
+Vivado generates the hardware definition file (HDF) used by the SDK. Vivado
+was used to configure the Zynq with the MiniZed presets, so that the SDK can
+be used to create the blinky LED application. The hardware support files needed
+by the SDK are generated as follows.
+%
+\begin{enumerate}
+%
+\item {\bf Create HDL Wrapper}
+%
+\begin{itemize}
+\item In the Vivado {\bf Sources} window, highlight \verb+system (system.bd)+
+\item Right-mouse-click and select \emph{Create HDL Wrapper}
+\item Accept the default option \emph{Let Vivado manage wrapper and auto-update}
+\item Click \emph{OK}
+\item This generates the top-level design file \verb+system_wrapper.v+
+\end{itemize}
+%
+\item {\bf Constraints}
+
+This design uses only Zynq processor system I/Os, no programmable logic I/Os,
+so pin constraints are not required. The Zynq pins are configured by the
+FSBL, which is generated by Vivado as part of the synthesis step.
+%
+\item {\bf Run Synthesis}
+%
+\begin{itemize}
+\item In the Vivado {\bf Project Manager} click \emph{Run Synthesis}
+\item Accept the defaults in the {\bf Launch Runs} dialog
+\item Click \emph{OK}
+\item Synthesis generates output in the directory
+
+\verb+vwork/blinky_gpio_mio.runs+
+
+\item When the {\bf Synthesis Completed} dialog appears, close it
+by clicking \emph{Cancel}
+\end{itemize}
+%
+\item {\bf Export Hardware}
+%
+\begin{itemize}
+\item Select \emph{File}$\rightarrow$\emph{Export}$\rightarrow$\emph{Export Hardware}
+\item Leave the \emph{Include bitstream} checkbox unchecked
+\item Accept the default \emph{Export to:} \verb+<Local to Project>+
+\item Click \emph{OK}
+\item This step generates the HDF file used by the SDK
+%
+\begin{verbatim}
+vwork/blinky_gpio_mio.sdk/system_wrapper.hdf
+\end{verbatim}
+\end{itemize}
+%
+\newpage
+\item {\bf HDF Analysis} (optional step)
+%
+\begin{itemize}
+\item Create a copy of the HDF file
+\item Change the extension from \verb+.hdf+ to \verb+.zip+
+\item Unzip the file and view the contents of \verb+system_wrapper+:
+\begin{itemize}
+\item \verb+ps7_init.tcl+
+
+Used by the SDK to initialize the processor during JTAG download
+
+\item \verb+ps7_init*.h/c+
+
+First stage bootloader (FSBL) source.
+
+\item \verb+system_bd.tcl+
+
+Block design Tcl script.
+\end{itemize}
+\item Delete the zip file and the \verb+system_wrapper+ folder
+\end{itemize}
+%
+\end{enumerate}
+%
+%------------------------------------------------------------------------------
+\item \textcolor{blue}{\textbf{SDK Project Creation}}
+%------------------------------------------------------------------------------
+%
+\begin{enumerate}
+\item \textbf{Method 1}: Start the SDK tool from Vivado
+%
+\begin{itemize}
+\item Select the Vivado menu option \emph{File}$\rightarrow$\emph{Launch SDK}
+\item Accept the {\bf Launch SDK} dialog defaults and click \emph{OK}
+\item This method sets up the SDK to use the \verb+.sdk+ folder within the
+Vivado work folder, i.e.,
+
+\verb+blinky_gpio_mio\vwork\blinky_gpio_mio.sdk+
+
+\item The SDK unzips the \verb+.hdf+ archive into the folder
+
+\verb+blinky_gpio_mio\vwork\blinky_gpio_mio.sdk\system_wrapper_hw_platform_0+
+
+\item The SDK opens and displays the \textbf{Address Map for processor ps7\_cortexa9\_0},
+(which is generated from the settings in \verb+system.hdf+).
+Table~\ref{tab:blinky_gpio_mio} shows a selection of addresses
+relevant to the GPIO MIO design.
+
+\item Double-mouse-click on \verb+ps7_init.html+ to see a detailed view
+of the address map, and the register settings. The registers are configured
+when the SDK runs \texttt{ps7\_init.tcl} during JTAG download, or when the
+processor boots and runs the FSBL.
+
+\item Scroll down to \textbf{MIO 52} and \textbf{MIO 53} to see that the
+multiplexed I/O (MIO) used to control the red and green PS LEDs are configured
+as GPIO.
+
+\item Scroll further down and see that the PS-to-PL clocks
+\textbf{FPGA0, 1, 2, 3} are configured for frequencies of
+50MHz, 100MHz, 10MHz, and 10MHz. The PS-to-PL clocks are not used
+in the GPIO MIO example.
+\end{itemize}
+
+\item \textbf{Method 2}: Start the SDK tool from the Windows Start Menu (or from a Linux console)
+
+The Avnet MiniZed Tutorial 02~\cite{Avnet_MiniZed_Tutorial02_2018} shows how
+to start the SDK and import a Vivado hardware platform. The Avnet tutorial shows
+the SDK steps that are automated by starting the SDK from within Vivado.
+The manual method of creating the SDK is useful if you want to change the
+SDK project names from the defaults used by Vivado.
+
+\end{enumerate}
+%
+% -----------------------------------------------------------------------------
+% Blinky GPIO MIO Address Map
+% -----------------------------------------------------------------------------
+%
+\begin{table}[t]
+\caption{PS bicolor LED GPIO MIO Example Address Map (selected addresses).}
+\label{tab:blinky_gpio_mio}
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+Zynq Component & Cell & Base Address\\
+\hline\hline
+\textbf{Memory} &&\\
+\hline
+&&\\
+On-Chip Memory\#0                 & \texttt{ps7\_ram\_0}          & \texttt{0x00000000}\\
+DDR Memory                        & \texttt{ps7\_ddr\_0}          & \texttt{0x00100000}\\
+QSPI Linear (Read-Only) Addresses & \texttt{ps7\_qspi\_linear\_0} & \texttt{0xFC000000}\\
+On-Chip Memory\#1                 & \texttt{ps7\_ram\_1}          & \texttt{0xFFFF0000}\\
+&&\\
+\hline
+\textbf{Peripheral} &&\\
+\hline
+&&\\
+UART\#0 Registers    & \texttt{ps7\_uart\_0}         & \texttt{0xE0000000}\\
+UART\#1 Registers    & \texttt{ps7\_uart\_1}         & \texttt{0xE0001000}\\
+GPIO MIO  Registers  & \texttt{ps7\_gpio\_0}         & \texttt{0xE000A000}\\
+QSPI Registers       & \texttt{ps7\_qspi\_0}         & \texttt{0xE000D000}\\
+&&\\
+DDR Registers        & \texttt{ps7\_ddrc\_0}         & \texttt{0xF8006000}\\
+&&\\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+% -----------------------------------------------------------------------------
+
+\newpage
+%------------------------------------------------------------------------------
+\item \textcolor{blue}{\textbf{SDK Board Support Package (BSP) Creation}}
+%------------------------------------------------------------------------------
+%
+\begin{enumerate}
+\item Select \emph{File}$\rightarrow$\emph{New}$\rightarrow$\emph{Board Support Package}
+\item Accept the default settings for the project \texttt{standalone\_bsp\_0} and
+click \emph{Finish}.
+\item \textbf{Board Support Package Settings}
+
+The MiniZed connects the Zynq UART\#0 to the bluetooth device and UART\#1 to the
+FTDI USB UART interface. The board support package needs to be configured to use
+UART\#1 for standard input/output as follows:
+
+\begin{itemize}
+\item Select \emph{Overview}, \emph{standalone}
+\item Change the pull-downs for \texttt{stdin} and \texttt{stdout} to \texttt{ps7\_uart\_1}
+\item Click \emph{OK}
+\end{itemize}
+\end{enumerate}
+
+After the BSP has been generated, under \emph{Project Explorer}, expand
+\texttt{standalone\_bsp\_0}, and double-mouse-click on \texttt{system.mss} to
+see the documentation and example designs for the components in the system.
+
+%------------------------------------------------------------------------------
+\item \textcolor{blue}{\textbf{SDK Baremetal Application Creation}}
+%------------------------------------------------------------------------------
+
+The PS bicolor LED control application is created by starting with \emph{Hello World}
+example application. The \emph{Hello World} application configures the SDK
+project to use the \texttt{platform.h/c} files, which define the functions for
+initialization and cleanup. The platform initialization configures the
+UART interface to be used for C library standard input and output.
+
+\begin{enumerate}
+\item Select \emph{File}$\rightarrow$\emph{New}$\rightarrow$\emph{Application Project}
+\item \textbf{Application Project}
+
+Configure the project name, and change the project to the BSP just generated
+\begin{itemize}
+\item \emph{Project name:} \texttt{blinky\_gpio\_mio}
+\item \emph{OS Platform:} \texttt{standalone}
+\item \emph{Hardware Platform:} \texttt{system\_wrapper\_hw\_platform\_0}
+\item \emph{Language:} \texttt{C}
+\item \emph{Board Support Package: Use Existing} \texttt{standalone\_bsp\_0}
+\end{itemize}
+\item Click \emph{Next}
+\item Select \emph{Hello World}
+
+\item Click \emph{Finish}
+\item Under the \emph{Project Explorer}, expand the \texttt{blinky\_gpio\_mio} project
+\item Right-mouse-click on \texttt{src}, select \texttt{helloworld.c}, right-mouse-click,
+select \emph{Rename} and rename the file \texttt{blinky\_gpio\_mio.c}
+\item Replace \texttt{blinky\_gpio\_mio.c} with the source code shown in
+Figure~\ref{fig:blinky_gpio_mio_app}.
+\end{enumerate}
+
+The SDK will automatically build the GPIO MIO bare-metal application.
+%
+%------------------------------------------------------------------------------
+\item \textcolor{blue}{\textbf{SDK Download and Run the Application}}
+%------------------------------------------------------------------------------
+%
+\begin{enumerate}
+\item Set the MiniZed Flash/JTAG mode switch to JTAG mode
+\item Connect the MiniZed to your development machine using the USB JTAG/UART interface
+\item Select the \emph{SDK Terminal}, click the green + symbol, and
+setup the UART communications to the MiniZed at 115200 baud (the timeout
+can be set to 1 second)
+\item Under the \emph{Project Explorer}, select the \texttt{blinky\_gpio\_mio}
+project, right-mouse-click, and select \emph{Run As}$\rightarrow$\emph{Launch
+on Hardware (System Debugger)} to download and run the application
+\item The PS LED will cycle through off, green, red, and amber (red+green)
+\item Select the \emph{SDK Terminal} and you will see a message
+for each LED change
+\end{enumerate}
+
+\textcolor{magenta}{Congratulations!} You have run your first custom application on the MiniZed board.
+
+%------------------------------------------------------------------------------
+% blinky_gpio_mio bare-metal application code
+%------------------------------------------------------------------------------
+%
+\begin{figure}
+\begin{center}
+\begin{minipage}{0.8\textwidth}
+\begin{lstlisting}
+#include <sleep.h>
+#include "platform.h"
+#include "xil_printf.h"
+
+int main()
+{
+	int i = 0;
+
+	init_platform();
+
+	xil_printf("MiniZed Blinky GPIO MIO Example\r\n");
+	xil_printf("-------------------------------\r\n");
+
+	// Clear the data (DATA) bits
+	*(volatile unsigned int *)0xE000A00C = 0xFFCF0000;
+
+	// Set the direction (DIRM) to output
+	*(volatile unsigned int *)0xE000A244 = 0x00300000;
+
+	// Enable the outputs (OEN)
+	*(volatile unsigned int *)0xE000A248 = 0x00300000;
+
+	// Blink the bicolor LED
+	while (1) {
+		switch (i%4) {
+			case 0:
+				xil_printf("%d: Off\r\n", i);
+				*(volatile unsigned int *)0xE000A00C = 0xFFCF0000;
+				break;
+
+			case 1:
+				xil_printf("%d: Green\r\n", i);
+				*(volatile unsigned int *)0xE000A00C = 0xFFCF0020;
+				break;
+
+			case 2:
+				xil_printf("%d: Red\r\n", i);
+				*(volatile unsigned int *)0xE000A00C = 0xFFCF0010;
+				break;
+
+			default:
+				xil_printf("%d: Amber\r\n", i);
+				*(volatile unsigned int *)0xE000A00C = 0xFFCF0030;
+				break;
+		}
+		sleep(1);
+		i++;
+	}
+
+    cleanup_platform();
+    return 0;
+}
+\end{lstlisting}
+\end{minipage}
+\end{center}
+\caption{PS bicolor LED GPIO MIO bare-metal application.}
+\label{fig:blinky_gpio_mio_app}
+\end{figure}
+%------------------------------------------------------------------------------
+
+%
+%------------------------------------------------------------------------------
+\item \textcolor{blue}{\textbf{SDK Create the First Stage Boot Loader (FSBL)}}
+%------------------------------------------------------------------------------
+
+The procedure to create the FSBL is similar to the procedure used to
+create a new application, however, no user customization is required, as the
+FSBL uses information (register settings) defined in the hardware definition
+file exported from Vivado.
+
+\begin{enumerate}
+\item Select \emph{File}$\rightarrow$\emph{New}$\rightarrow$\emph{Application Project}
+\item \textbf{Application Project}
+
+Configure the project name, and change the project to the BSP just generated
+\begin{itemize}
+\item \emph{Project name:} \texttt{zynq\_fsbl}
+\item \emph{OS Platform:} \texttt{standalone}
+\item \emph{Hardware Platform:} \texttt{system\_wrapper\_hw\_platform\_0}
+\item \emph{Language:} \texttt{C}
+\item \emph{Board Support Package: Create New} \texttt{zynq\_fsbl\_bsp}
+
+A new BSP is needed as the FSBL requires \verb+xilffs+ library support.
+\end{itemize}
+\item Click \emph{Next}
+\item Select \emph{Zynq FSBL}
+
+\item Click \emph{Finish}
+
+\item Modify the BSP to use \verb+ps7_uart_1+ for stdin and stdout.
+
+\end{enumerate}
+
+The SDK will automatically build the FSBL BSP and FSBL. The SDK Console
+output should contain the message \verb+Finished building target: zynq_fsbl.elf+.
+
+%------------------------------------------------------------------------------
+\item \textcolor{blue}{\textbf{SDK Create the QSPI Flash Boot Image}}
+%------------------------------------------------------------------------------
+%
+\begin{enumerate}
+\item In the SDK, highlight the \verb+blinky_gpio_mio+ application.
+\item From the SDK main menu, select \emph{Xilinx}$\rightarrow$\emph{Create Boot Image}.
+
+Figure~\ref{fig:blinky_gpio_mio_bootgen_gui} shows the Create Boot Image dialog.
+The defaults will generate the file \verb+BOOT.bin+. The Avnet MiniZed Tutorial 04
+indicates that the boot image file type should be changed to
+.MCS~\cite{Avnet_MiniZed_Tutorial04_2018}, however, this is not necessary.
+
+\item Click \emph{Create Image}
+\end{enumerate}
+
+%------------------------------------------------------------------------------
+\item \textcolor{blue}{\textbf{Program the QPSI Flash Boot Image}}
+%------------------------------------------------------------------------------
+
+\begin{enumerate}
+\item If Vivado is not running, start Vivado, and select \emph{Open Hardware Manager}
+from within the main GUI.
+
+If Vivado has the \verb+blinky_gpio_mio+ project open, then in the \emph{Flow Navigator},
+under \emph{PROGRAM AND DEBUG}, select \emph{Open Hardware Manager}
+
+\item Use the hardware manager to connect to the target (the MiniZed board).
+
+\item From the Vivado main menu, select \emph{Tools}$\rightarrow$\emph{Add Configuration Memory Device}.
+
+Note that this option becomes disabled (the menu option becomes greyed out) after you have added a
+configuration memory device.
+
+\item In the \emph{Add Configuration Memory} dialog:
+\begin{itemize}
+\item Enter the \textbf{Filter} settings:
+\begin{itemize}
+\item \emph{Manufacturer:} \texttt{Micron}
+\item \emph{Density (Mb):} \texttt{128}
+\item \emph{Type:} \texttt{qspi}
+\item \emph{Width:} \texttt{x1-single}
+\end{itemize}
+%
+\item From the \textbf{Select Configuration Memory Part} list, select the first device:
+
+\texttt{my25ql128-qspi-x1-single}
+%
+\item Click \emph{Ok}
+\end{itemize}
+
+\item In the \emph{Program Configuration Memory Device} window:
+\begin{itemize}
+\item For \textbf{Configuration file:} navigate to the \verb+BOOT.bin+ file in the \verb+blinky_gpio_mio+ application folder.
+\item For \textbf{Zynq FSBL:} navigate to the \verb+zynq_fsbl.elf+ file in the \verb+zynq_fsbl+ application folder.
+
+Figure~\ref{fig:blinky_gpio_mio_program_flash_gui} shows the configuration window after
+the files have been selected.
+\item Click \emph{Ok} to program the QSPI Flash
+\end{itemize}
+%
+\item Unplug the MiniZed, change the boot mode switch to Flash, and plug it back into the development machine.
+\end{enumerate}
+
+The MiniZed will boot from flash and the bicolor LED will start cycling off, green, red, and amber. The
+blue LED will remain off, as the PS bicolor LED project does not use the PL, so the configuration DONE
+signal never asserts.
+
+\textcolor{magenta}{Congratulations!} Your MiniZed board boots and runs your first custom application.
+
+The next design adds the progammable logic into the mix!
+
+\end{enumerate} % End of blinky_gpio_mio steps
+%
+% -----------------------------------------------------------------------------
+% PS bicolor LED GPIO MIO Design - Bootgen GUI
+% -----------------------------------------------------------------------------
+%
+\begin{figure}[p]
+  \begin{center}
+    \includegraphics[width=0.9\textwidth]
+    {figures/blinky_gpio_mio_bootgen_gui.png}\\
+  \end{center}
+  \caption{PS GPIO MIO design Create Boot Image window.}
+  \label{fig:blinky_gpio_mio_bootgen_gui}
+\end{figure}
+% -----------------------------------------------------------------------------
+%
+% -----------------------------------------------------------------------------
+% PS bicolor LED GPIO MIO Design - Program Flash GUI
+% -----------------------------------------------------------------------------
+%
+\begin{figure}[p]
+  \begin{center}
+    \includegraphics[width=0.9\textwidth]
+    {figures/blinky_gpio_mio_program_flash_gui.png}\\
+  \end{center}
+  \caption{PS GPIO MIO design Program Coniguration Memory Device window.}
+  \label{fig:blinky_gpio_mio_program_flash_gui}
+\end{figure}
+% -----------------------------------------------------------------------------
+%
+

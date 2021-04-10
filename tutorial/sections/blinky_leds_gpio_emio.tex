@@ -1,0 +1,83 @@
+%------------------------------------------------------------------------------
+\subsection{PL bicolor and blue LED control via GPIO EMIO}
+%------------------------------------------------------------------------------
+
+The PL bicolor and blue LED control design extends the GPIO MIO design:
+%
+\begin{itemize}
+\item 16-bits of PS GPIO EMIO are connected to the PL.
+\item The 7-series \verb+STARTUPE2+ component is instantiated in the PL
+to control the blue LED.
+\item The PL is used to connect GPIO EMIO outputs to the
+bicolor and blue LED.
+\item The PL is used to connect GPIO EMIO inputs to the user
+push button and switch.
+\item The Vivado design uses a top-level file that is \emph{not}
+managed by Vivado.
+\item The Vivado block design is instantiated in the top-level design.
+\item An unmanaged constraints Tcl file is used to implement pin constraints.
+\end{itemize}
+
+\noindent\textcolor{red}{\bf TODO}
+\begin{itemize}
+\item I have already extended the GPIO MIO design and confirmed that EMIO can control the PL bicolor LED.
+\item The post-block-automation Zynq processor has 16-bits of EMIO support. All I needed to do was
+to select the GPIO\_0 port, right-mouse-click and select \emph{Make External} and a port named
+\texttt{GPIO\_0\_0} is created. I renamed it \texttt{GPIO}.
+\item Extend the design to support the blue LED, the user switch, and push button.
+\item EMIO registers:
+ - DATA\_2     at E000A048  Output Data, GPIO Bank 2, EMIO
+ - DATA\_2\_RO at E000A068  Input Data, GPIO Bank 2, EMIO
+ - DIRM\_2     at E000A284  Direction Mode, GPIO Bank 2, EMIO
+ - OEN\_2      at E000A288  Output Enable, GPIO Bank 2, EMIO
+\item Describe how to use U-Boot to control the EMIO LED?
+\end{itemize}
+
+
+\noindent\textcolor{red}{\bf Tutorial walk-through notes}
+
+Follow through the first tutorial and just make notes about the changes.
+
+\begin{itemize}
+\item Vivado: Create a new project \texttt{blinky\_gpio\_emio}
+\item Zynq PS: After running block automation, select
+GPIO\_0, \emph{Make External}, and rename to \texttt{GPIO}
+\item At this point we have a top-level design that we
+do not want to generate a wrapper for, rather we want a
+top-level file in which we can drop the \texttt{system} design as
+a component.
+\item Figure XXX shows a top-level HDL component created
+based on the port definitions on
+
+\verb+vwork\blinky_gpio_emio.srcs\sources_1\bd\system\synth\system.v+
+
+\item Add \texttt{minized.sv} to the project
+\item Add the pin constraints Tcl file to the project and set it
+to be used for \emph{Implementation} only.
+\item Run Synthesis. No issues, so Run Implementation.
+No issues, so Generate Bitstream.
+\item Check the arduino pins. A3 should be pin E13 and A4 should be pin E12.
+
+\begin{verbatim}
+| E11        | arduino_a[5]      | High Range | IO_L2P_T0_AD8P_35       | BIDIR       | LVCMOS33           |      35 |          8 | SLOW |                     |                 NONE |         | FIXED      |           |          |      | NONE             |              |                   |              |
+| E12        | arduino_a[4]      | High Range | IO_L2N_T0_AD8N_35       | BIDIR       | LVCMOS33           |      35 |          8 | SLOW |                     |                 NONE |         | FIXED      |           |          |      | NONE             |              |                   |              |
+| E13        | arduino_a[3]      | High Range | IO_L1N_T0_AD0N_35       | BIDIR       | LVCMOS33           |      35 |          8 | SLOW |                     |                 NONE |         | FIXED      |           |          |      | NONE             |              |                   |              |
+| F12        | arduino_a[2]      | High Range | IO_L1P_T0_AD0P_35       | BIDIR       | LVCMOS33           |      35 |          8 | SLOW |                     |                 NONE |         | FIXED      |           |          |      | NONE             |              |                   |              |
+| F13        | arduino_a[1]      | High Range | IO_L3P_T0_DQS_AD1P_35   | BIDIR       | LVCMOS33           |      35 |          8 | SLOW |                     |                 NONE |         | FIXED      |           |          |      | NONE             |              |                   |              |
+| F14        | arduino_a[0]      | High Range | IO_L3N_T0_DQS_AD1N_35   | BIDIR       | LVCMOS33           |      35 |          8 | SLOW |                     |                 NONE |         | FIXED      |           |          |      | NONE             |              |                   |              |
+\end{verbatim}
+
+\item Export hardware and include the bitstream.
+\item Launch SDK, setup the BSP, and the application.
+\item Since this design has a bitstream, the FPGA needs to be programmed first,
+and then the application downloaded.
+
+\item Changing the LEDs using the EMIO should just need DIRM = 1 at offset 284.
+Yes. That and the data output were all that were needed.
+Ok, now I have enough to write up this tutorial step.
+\end{itemize}
+
+PL bi-color LED on pin E12 PL\_LED\_R, E13 and PL\_LED\_G. Not sure about the names,
+since they're also on Arduino pins.
+
+

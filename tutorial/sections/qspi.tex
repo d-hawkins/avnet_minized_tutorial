@@ -1,0 +1,16 @@
+% =============================================================================
+\subsection{QSPI Flash}
+% =============================================================================
+
+Create an application that uses the QSPI PS library to access the flash.
+The application should support all the flash features via the UART or
+WiFi interface. Write a PC-side application that allows you to read
+and write the contents of flash. Use this to read the contents of
+a MiniZed that has never been programmed, and one restored to factory
+defaults.
+
+Use the Xilinx QSPI code to read the flash and calculate the CRC32 using
+the same code I used under Cygwin. This would demonstrate a pretty basic
+use of the library.
+
+Extend this application to access the eMMC too?
