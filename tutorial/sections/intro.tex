@@ -2,12 +2,63 @@
 \section{Introduction}
 % =============================================================================
 
+\begin{figure}[t]
+  \begin{minipage}{0.5\textwidth}
+    \begin{center}
+    \includegraphics[width=0.9\textwidth,angle=270]
+    {photos/minized_plus_hub.jpg}\\
+    (a) MiniZed and USB hub
+    \end{center}
+  \end{minipage}
+  \hfil
+  \begin{minipage}{0.5\textwidth}
+    \begin{center}
+    \includegraphics[width=0.9\textwidth,angle=270]
+    {photos/minized.jpg}\\
+    (b) Minized
+    \end{center}
+  \end{minipage}
+  \caption{Avnet MiniZed development board photos.}
+  \label{fig:minized_photos}
+\end{figure}
+
+% -----------------------------------------------------------------------------
+\subsection{Tutorial Overview}
+% -----------------------------------------------------------------------------
+
+The Avnet MiniZed contains a Xilinx Zynq-7000 series single-core ARM processor
+system (PS) plus Artix-7 programmable logic (PL).
+%
+This tutorial is written for FPGA designers new to the Zynq processor. The
+tutorial provides cross-references to Avnet and Xilinx documentation, walks
+through several designs to familiarize the user with the Xilinx development 
+tools, Zynq processor configuration, and programmable logic synthesis.
+
+Figure~\ref{fig:minized_photos} shows photos of a typical MiniZed development
+setup; the MiniZed board, two micro-USB cables, a USB flash drive, and a
+USB hub. The USB hub in Figure~\ref{fig:minized_photos}(a) has power switches
+for each of the downstream USB devices; this proves to be useful when working
+with the MiniZed as you can control power to the board using the USB hub 
+switches. The MiniZed can be operated with a single micro-USB cable, using
+the micro-USB connector connector nearest the USB host connector). However,
+when the MiniZed is used as a USB host, eg., to access a USB flash drive, the 
+second micro-USB cable is required to provide sufficient power to the USB 
+host interface.
+
+This tutorial provides insights and details that you will not find (or are
+hard to find) in Avnet or Xilinx documentation.
+
+\clearpage
+% -----------------------------------------------------------------------------
+\subsection{Avnet MiniZed Features}
+% -----------------------------------------------------------------------------
+
 The \href{http://www.minized.org}{MiniZed} is a low-cost (US\$89) development
 board from Avnet containing a Xilinx Zynq-7000 programmable system-on-chip.
 %
 Figure~\ref{fig:minized_schematic_block_diagram} shows a block diagram of
 the MiniZed board. The MiniZed
-features~\cite{Avnet_MiniZed_HW_2017,Avnet_MiniZed_Schematic_2017}:
+features~\cite{Avnet_MiniZed_HW_2020,Avnet_MiniZed_Schematic_2017}:
 %
 \begin{itemize}
 % ---------------------
@@ -18,7 +69,7 @@ features~\cite{Avnet_MiniZed_HW_2017,Avnet_MiniZed_Schematic_2017}:
 \item Zynq 7Z007S single-core ARM Cortex-A9 processor (XC7Z007S-1CLG225C)
 \item 28nm Artix-7 series programmable logic
 \begin{itemize}
-\item 3,600 logic slices containing~\cite{Xilinx_UG585_2018}
+\item 3,600 logic slices containing~\cite{Xilinx_UG585_2021}
 \begin{itemize}
 \item 14,400 6-input LUTs
 \item 28,800 registers
@@ -87,11 +138,8 @@ features~\cite{Avnet_MiniZed_HW_2017,Avnet_MiniZed_Schematic_2017}:
 %
 \end{itemize}
 %
-This tutorial is written for FPGA designers new to the Zynq processor. The
-tutorial provides cross-references to Avnet and Xilinx documentation, walks
-through several designs to familiarize the user with the Xilinx development tools,
-Zynq processor configuration, and programmable logic synthesis.
 
+\clearpage
 % -----------------------------------------------------------------------------
 % MiniZed Block Diagram from the schematic
 % -----------------------------------------------------------------------------

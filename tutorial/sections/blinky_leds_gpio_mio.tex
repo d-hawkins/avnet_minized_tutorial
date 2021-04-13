@@ -7,14 +7,14 @@ PS bicolor LED is controlled by the Zynq GPIO signals MIO52
 (\verb+PS_LED_R+) and MIO53 (\verb+PS_LED_G+).
 %
 The Zynq TRM describes the GPIO multiplexed I/O (MIO) and extended multiplexed
-I/O (EMIO) in Chapter 14~\cite{Xilinx_UG585_2018}.
+I/O (EMIO) in Chapter 14~\cite{Xilinx_UG585_2021}.
 %
 Figure~\ref{fig:zynq_gpio_block_diagram} shows the GPIO block diagram;
 banks 0 and 1 connect to the MIO, while banks 2 and 3 connect to the EMIO.
 %
 Figure~\ref{fig:zynq_gpio_block_diagram} shows the GPIO control registers.
 The GPIO control register definitions and location in the Zynq address map
-is defined in Appendix B.19~\cite{Xilinx_UG585_2018}. The GPIO registers
+is defined in Appendix B.19~\cite{Xilinx_UG585_2021}. The GPIO registers
 are located at address 0xE000A000.
 
 The PS bicolor LED is controlled by MIO bits 52 and 53 which are located in GPIO
@@ -53,7 +53,7 @@ registers and PL designs is a simple, but powerful, debugging tool.
     \includegraphics[width=0.5\textwidth]
     {figures/zynq_gpio_block_diagram.png}
   \end{center}
-  \caption{Zynq GPIO block diagram (from Figure 14-1~\cite{Xilinx_UG585_2018}).}
+  \caption{Zynq GPIO block diagram (from Figure 14-1~\cite{Xilinx_UG585_2021}).}
   \label{fig:zynq_gpio_block_diagram}
 \end{figure}
 % -----------------------------------------------------------------------------
@@ -67,7 +67,7 @@ registers and PL designs is a simple, but powerful, debugging tool.
     \includegraphics[width=0.75\textwidth]
     {figures/zynq_gpio_registers.png}
   \end{center}
-  \caption{Zynq GPIO control registers (from Figure 14-2~\cite{Xilinx_UG585_2018}).}
+  \caption{Zynq GPIO control registers (from Figure 14-2~\cite{Xilinx_UG585_2021}).}
   \label{fig:zynq_gpio_registers}
 \end{figure}
 % -----------------------------------------------------------------------------

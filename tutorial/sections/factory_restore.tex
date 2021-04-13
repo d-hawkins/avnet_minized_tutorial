@@ -252,17 +252,19 @@ The MiniZed contains three non-volatile memory devices;
 \end{itemize}
 %
 The 2kbit EEPROM contains the configuration for the FTDI FT2232H device.
-The Avnet restore procedure does not include restoring the EEPROM contents.
-The EEPROM contents can be read and saved using the
+The EEPROM data can be viewed using the
 \href{https://www.ftdichip.com/Support/Utilities.htm#FT_PROG}{FT\_PROG}
 tool from FTDI. All MiniZed boards ship with the same
-USB JTAG/UART serial number: \verb+1234-oj1+. Connecting multiple MiniZed
-boards to the same development machine at the same time requires the use
-of unique USB serial numbers, as under Windows, each USB serial number defines
-a unique COM port number. The FTDI FT\_PROG tool can be used to change the
-MiniZed FTDI FT2232H serial number. Do not change any other FT2232H parameters,
-otherwise the Digilent JTAG device will not be detected by the Xilinx tools
-as a JTAG programmer.
+USB JTAG/UART serial number: \verb+1234-oj1+. Under Windows, COM port
+management is a lot simpler if each USB device has a unique serial number.
+%
+The FTDI FT\_PROG tool \emph{cannot} be used to change the MiniZed 
+FTDI FT2232H serial number, as the tool does not preserve 
+Xilinx/Avnet/Digilent vendor-specific bytes in the EEPROM.
+%
+Appendix~\ref{sec:ftdi_eeprom} contains details on the EEPROM format,
+and the application \texttt{minized\_ftdi\_serial} (in the repository)
+can be used to read and write the EEPROM contents.
 
 The Avnet MiniZed documentation page has a link to a zip file containing
 the restore images~\cite{Avnet_MiniZed_Restore_2018}. The zip file contains
@@ -292,7 +294,10 @@ The MiniZed U-Boot image supports the \verb+crc32+ checksum (the U-Boot
 source provides support for additional checksum algorithms), and the MiniZed Linux image
 supports \verb+sha1sum+, \verb+sha256sum+, and \verb+sha512sum+.
 Table~\ref{tab:factory_image_checksums} contains the \verb+crc32+
-and \verb+sha1sum+ checksums for the restore images.
+and \verb+sha1sum+ checksums for the restore images. Note that since
+the checksums for  \verb+flash_fallback_7007S.bin+ and \verb+smallboot.bin+
+are the same, the two files are identical.
+
 
 % -----------------------------------------------------------------------------
 % Factory Image Checksums
@@ -546,9 +551,9 @@ Zynq> crc32 10000000 fc0be4
 crc32 for 10000000 ... 10fc0be3 ==> 005b7b3c
 \end{verbatim}
 %
-The console messages from \textcolor{blue}{\texttt{smallboot.bin}} are
-identical to \textcolor{blue}{\texttt{flash\_fallback\_7007S.bin}}. The
-easiest way to determine which image is programmed, is
+The console messages from \textcolor{blue}{\texttt{flash\_fallback\_7007S.bin}}
+and \textcolor{blue}{\texttt{smallboot.bin}} are identical, since they the same 
+file. The easiest way to determine which image is programmed, is
 to calculate the \verb+crc32+ checksum using the image length and
 expected values in Table~\ref{tab:factory_image_checksums}.
 

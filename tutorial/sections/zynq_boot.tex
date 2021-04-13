@@ -5,7 +5,7 @@
 
 The Zynq processor power-on-reset and boot procedure is documented in the
 \emph{Technical Reference Manual} (TRM) and \emph{Software Developer
-User Guide}~\cite{Xilinx_UG585_2018,Xilinx_UG821_2015}. The Zynq
+User Guide}~\cite{Xilinx_UG585_2021,Xilinx_UG821_2015}. The Zynq
 \href{https://www.xilinx.com/support/documentation-navigation/design-hubs/dh0053-zynq-7000-boot-and-config-hub.html}{boot and configuration}
 design hub contains additional cross-references on the power-on-reset
 and boot flow.
@@ -17,7 +17,7 @@ The MiniZed Zynq processor determines the boot mode based on the
 when power-on-reset (\verb+PS_POR_B+) deasserts\footnote{The Zynq TRM
 shows the required timing relationship between the power-on-reset
 and system reset signals in Figure 6-4: \emph{Power and Reset Sequencing
-Waveforms} on p164~\cite{Xilinx_UG585_2018}.}.
+Waveforms} on p165~\cite{Xilinx_UG585_2021}.}.
 %
 Figure~\ref{fig:zynq_boot_mode_pins} shows how seven MIO pins control
 the boot mode. Figure~\ref{fig:minized_boot_mode_pins} shows the
@@ -62,7 +62,7 @@ MIO Pin(s) & Logic & Description\\
     \includegraphics[width=0.95\textwidth]
     {figures/zynq_boot_mode_pins.png}
   \end{center}
-  \caption{Zynq boot mode MIO pins (from Table 6-4, p166~\cite{Xilinx_UG585_2018}).}
+  \caption{Zynq boot mode MIO pins (from Table 6-4, p167~\cite{Xilinx_UG585_2021}).}
   \label{fig:zynq_boot_mode_pins}
 \end{figure}
 % -----------------------------------------------------------------------------
@@ -104,7 +104,7 @@ typically loads and executes the second stage boot loader (SSBL), U-Boot.
 \end{enumerate}
 %
 The Zynq processor memory map during BootROM execution, and after handoff to the
-FSBL, is given in Figure 6-11~\cite{Xilinx_UG585_2018}: the main change in the
+FSBL, is given in Figure 6-11~\cite{Xilinx_UG585_2021}: the main change in the
 memory map is the presence of the 64kB BootROM (at address 0x00030000) after the
 192kB OCM (at address 0) during BootROM execution.
 
@@ -117,14 +117,14 @@ memory map is the presence of the 64kB BootROM (at address 0x00030000) after the
     \includegraphics[width=\textwidth]
     {figures/zynq_bootrom_header.png}
   \end{center}
-  \caption{Zynq BootROM Image Header (from Table 6-5, pp171-172~\cite{Xilinx_UG585_2018}).}
+  \caption{Zynq BootROM Image Header (from Table 6-5, pp172-173~\cite{Xilinx_UG585_2021}).}
   \label{fig:zynq_bootrom_header}
 \end{figure}
 % -----------------------------------------------------------------------------
 %
 Figure~\ref{fig:zynq_bootrom_header} shows the format of the BootROM Header
 (Boot Image Header) in the QSPI flash boot image. The BootROM header is defined
-in the Zynq \emph{Technical Reference Manual} (TRM)~\cite{Xilinx_UG585_2018},
+in the Zynq \emph{Technical Reference Manual} (TRM)~\cite{Xilinx_UG585_2021},
 while boot image creation using the \verb+bootgen+ tool is described in the
 \emph{Software Developers Guide} (pp48-51, and Appendix A~\cite{Xilinx_UG821_2015}).
 %
@@ -182,13 +182,13 @@ instruction~\cite{ARM_ARMv7_2018}, so each interupt handler will
 
 \item \texttt{0x020:} \textbf{Width Detection}
 
-0xAA995566 is used for width detection (p172~\cite{Xilinx_UG585_2018}).
+0xAA995566 is used for width detection (p173~\cite{Xilinx_UG585_2021}).
 
 \item \texttt{0x024:} \textbf{Image Identification}
 
 0x584C4E58 corresponds to 8-bit ASCII codes for
 X, L, N, and X in little-endian format, which is why the ASCII
-value displayed by U-Boot is XNLX  (p172~\cite{Xilinx_UG585_2018}).
+value displayed by U-Boot is XNLX  (p173~\cite{Xilinx_UG585_2021}).
 
 \item \texttt{0x028:} \textbf{Encryption Status}
 
@@ -196,7 +196,7 @@ value displayed by U-Boot is XNLX  (p172~\cite{Xilinx_UG585_2018}).
 
 \item \texttt{0x02C:} \textbf{FSBL/User Defined}
 
-0x01010000 indicates the BootROM header version (p173~\cite{Xilinx_UG585_2018}).
+0x01010000 indicates the BootROM header version (p174~\cite{Xilinx_UG585_2021}).
 
 \item \texttt{0x030:} \textbf{Source Offset}
 
@@ -231,11 +231,11 @@ at offset 0x1700 look like ARMv7 instructions.
 0x00018008 is the same as \texttt{0x034:} \textbf{Length of Image}.
 
 For non-secure boot mode, 0x040 and 0x034 must match
-(p174~\cite{Xilinx_UG585_2018}).
+(p175~\cite{Xilinx_UG585_2021}).
 
 \item \texttt{0x044:} \textbf{QSPI Configuration Word}
 
-0x00000001 matches expected value (p174~\cite{Xilinx_UG585_2018}).
+0x00000001 matches expected value (p175~\cite{Xilinx_UG585_2021}).
 
 \item \texttt{0x048:} \textbf{Header Checksum}
 
@@ -254,21 +254,21 @@ using \verb+bootgen+ and the \verb+udf_field+ in the BIF file
 0x000008C0 Image Header Table offset.
 
 \textcolor{red}{Note: this field is missing from Table 6-5, but is listed in
-the text, with the wrong name!} (see p174~\cite{Xilinx_UG585_2018}).
+the text, with the wrong name!} (see p175~\cite{Xilinx_UG585_2021}).
 
 \item \texttt{0x09C:} \textbf{Partition Header Table Offset}
 
 0x00000C80 Partition Header Table offset.
 
 \textcolor{red}{Note: this field is missing from Table 6-5, but is listed in
-the text, with the wrong description!} (see p175~\cite{Xilinx_UG585_2018}).
+the text, with the wrong description!} (see p176~\cite{Xilinx_UG585_2021}).
 
 \item \texttt{0x0A0:} \textbf{Register Initialization} (2048-bytes)
 
 The repeated pattern of 0xFFFFFFFF 0x00000000 indicates that
 the register initialization block is not used (the register
 address 0xFFFFFFFF terminates register initialization
-(p175~\cite{Xilinx_UG585_2018}).
+(p176~\cite{Xilinx_UG585_2021}).
 
 \item \texttt{0x8A0:} \textbf{Image Header}
 
