@@ -1,0 +1,183 @@
+% =============================================================================
+\section{FTDI EEPROM Programming}
+% =============================================================================
+\label{sec:ftdi_eeprom}
+
+The MiniZed uses the \href{https://ftdichip.com}{FTDI} FT2232H USB interface to 
+implement USB-to-JTAG and USB-to-UART interfaces. The USB device strings are
+stored on a 2kbit EEPROM (93LC56B) connected to the FT2232H device. The 
+FTDI \href{https://ftdichip.com/utilities}{FT\_PROG EEPROM Programming 
+Utility} can be used to \emph{read} the EEPROM contents, however, this
+application should not be used to write to the EEPROM, as it does not preserve
+the Xilinx/Avnet/Digilent vendor-specific device identification bytes added to the 
+user area of the EEPROM. Figure~\ref{fig:minized_ft_prog} shows the FT\_PROG
+view for two different MiniZed boards; the 16-bit words in user area 
+of the EEPROM can be seen in the bottom of the figure. 
+
+The FTDI library 
+\href{https://ftdichip.com/drivers/d2xx-drivers}{D2XX}~\cite{FTDI_D2XX_2019}
+provides functions to implement USB data transfers, and to read and write
+the EEPROM.
+%
+The open-source \href{https://www.intra2net.com/en/developer/libftdi}{libFTDI}
+provides similar functionality.
+%
+% libftdi/doc/EEPROM-structure contains notes on the EEPROM  structure
+%
+The vendor-specific device identification bytes in the FTDI
+EEPROM are not officially documented, however, some details have been
+reverse-engineered, eg., see~\cite{Bartik_2019}.
+%
+Reverse-engineering the EEPROM format was made unnecessary by Digilent 
+customer support inadvertantly posting their FTDI configuration tool 
+\href{https://forum.digilentinc.com/topic/1816-digilent-smt1-recovery}
+{FTDIConfig.exe} on their support forum.
+Figure~\ref{fig:digilent_ftdi_config} shows the Digilent FTDI configuration
+view for two different MiniZed boards.
+
+The \texttt{MiniZed1} EEPROM was updated using a custom application based
+on the FTDI D2XX library that;
+%
+read the EEPROM using \texttt{FT\_ReadEE},
+replaced the default serial string, \texttt{1234-oj1}, 
+with the identical length string, \texttt{MiniZed1},
+updated the checksum,
+and wrote the EEPROM using \texttt{FT\_WriteEE}. 
+%
+Vivado correctly recognized the device as \texttt{MiniZed1}, and Windows 
+10 created a new COM port specific to this USB device. The same application 
+was then used to reset the EEPROM to the original serial string; Vivado 
+recognized the device as \texttt{1234-oj1} and TeraTerm found the device 
+on the previously assigned COM port. 
+
+The Digilent FTDI configuration tool was then used to program the MiniZed 
+with the new serial string \texttt{MiniZed1}. 
+%
+Figure~\ref{fig:minized1_eeprom} compares the \texttt{MiniZed1} EEPROM image 
+derived from the \texttt{1234-oj1} image, with the image created by the 
+Digilent configuration tool. There are three differences; the 16-bit word 
+at offset 0x000D  changes from \textcolor{blue}{0x0003} to 
+\textcolor{red}{0x0001}, the 16-bit word at offset 0x006A changes from 
+\textcolor{blue}{0x0001} to \textcolor{red}{0x0000}, and the final 
+16-bit words (the checksums) change.
+%
+The change at offset 0x000D may be the version 3 value for FT2232H extensions 
+mentioned in FTDI AN428.
+%
+The FTDI FT\_PROG and Digilent FTDI configuration tools were then used to 
+program the MiniZed with the \emph{longer} serial string \texttt{MiniZed01}; 
+the string offsets in the FTDI header bytes changed to accommodate the 
+longer serial number string. 
+%
+Based on these tests, the application \texttt{minized\_ftdi\_serial} was 
+created to read or write the MiniZed serial string.
+
+% -----------------------------------------------------------------------------
+% MiniZed EEPROM images
+% -----------------------------------------------------------------------------
+%
+\begin{figure}[t]
+\begin{minipage}{0.5\textwidth}
+\begin{center}
+\footnotesize
+{\tt
+0000: 0801 0403 6010 0700 3280 0008 0000 0E9A
+0008: 18A8 12C0 0000 0000 0056 \textcolor{blue}{0003} 584A 7641
+0010: 656E 0074 694D 696E 655A 2064 3156 0000
+0018: 0000 0000 0000 0000 0000 0000 0000 0000
+0020: 0000 0000 0000 0000 0000 0000 0000 0000
+0028: 0000 0000 0000 0000 0000 0000 0000 0000
+0030: 0000 0000 0000 0000 0000 0000 0000 0000
+0038: 0000 0000 0000 0000 0000 0000 0000 0000
+0040: 0000 0000 0000 0000 0000 0000 0000 0000
+0048: 0000 0000 0000 0000 0000 030E 0058 0069
+0050: 006C 0069 006E 0078 0318 004A 0054 0041
+0058: 0047 002B 0053 0065 0072 0069 0061 006C
+0060: 0312 004D 0069 006E 0069 005A 0065 0064
+0068: 0031 0302 \textcolor{blue}{0001} 0000 0000 0000 0000 0000
+0070: 0000 0000 0000 0000 0000 0000 0000 0000
+0078: 0000 0000 0000 0000 0000 0000 0000 \textcolor{blue}{EC87}}
+\vskip3mm
+(a) Based on original MiniZed image
+\end{center}
+\end{minipage}
+\hfil
+\begin{minipage}{0.5\textwidth}
+\begin{center}
+\footnotesize
+{\tt
+0000: 0801 0403 6010 0700 3280 0008 0000 0E9A
+0008: 18A8 12C0 0000 0000 0056 \textcolor{red}{0001} 584A 7641
+0010: 656E 0074 694D 696E 655A 2064 3156 0000
+0018: 0000 0000 0000 0000 0000 0000 0000 0000
+0020: 0000 0000 0000 0000 0000 0000 0000 0000
+0028: 0000 0000 0000 0000 0000 0000 0000 0000
+0030: 0000 0000 0000 0000 0000 0000 0000 0000
+0038: 0000 0000 0000 0000 0000 0000 0000 0000
+0040: 0000 0000 0000 0000 0000 0000 0000 0000
+0048: 0000 0000 0000 0000 0000 030E 0058 0069
+0050: 006C 0069 006E 0078 0318 004A 0054 0041
+0058: 0047 002B 0053 0065 0072 0069 0061 006C
+0060: 0312 004D 0069 006E 0069 005A 0065 0064
+0068: 0031 0302 \textcolor{red}{0000} 0000 0000 0000 0000 0000
+0070: 0000 0000 0000 0000 0000 0000 0000 0000
+0078: 0000 0000 0000 0000 0000 0000 0000 \textcolor{red}{ECAF}}
+\vskip3mm
+(b) Digilent FTDI programmer
+\end{center}
+\end{minipage}
+\caption{FTDI EEPROM images for \texttt{MiniZed1}.}
+\label{fig:minized1_eeprom}
+\end{figure}
+% -----------------------------------------------------------------------------
+
+\clearpage
+% -----------------------------------------------------------------------------
+% FTDI FT_PROG
+% -----------------------------------------------------------------------------
+%
+\begin{figure}[p]
+  \begin{minipage}{0.5\textwidth}
+    \begin{center}
+    \includegraphics[width=0.95\textwidth]
+    {figures/minized_ft_prog_1234-oj1.png}\\
+    (a) Serial number: \texttt{1234-oj1}
+    \end{center}
+  \end{minipage}
+  \hfil
+  \begin{minipage}{0.5\textwidth}
+    \begin{center}
+    \includegraphics[width=0.95\textwidth]
+    {figures/minized_ft_prog_MiniZed1.png}\\
+    (b) Serial number: \texttt{MiniZed1}
+    \end{center}
+  \end{minipage}
+  \caption{FTDI FT\_PROG view of two MiniZed boards.}
+  \label{fig:minized_ft_prog}
+\end{figure}
+% -----------------------------------------------------------------------------
+
+% -----------------------------------------------------------------------------
+% Digilent FTDI Config
+% -----------------------------------------------------------------------------
+%
+\begin{figure}[p]
+  \begin{minipage}{0.5\textwidth}
+    \begin{center}
+    \includegraphics[width=0.95\textwidth]
+    {figures/minized_digilent_ftdi_config_1234-oj1.png}\\
+    (a) Serial number: \texttt{1234-oj1}
+    \end{center}
+  \end{minipage}
+  \hfil
+  \begin{minipage}{0.5\textwidth}
+    \begin{center}
+    \includegraphics[width=0.95\textwidth]
+    {figures/minized_digilent_ftdi_config_MiniZed1.png}\\
+    (b) Serial number: \texttt{MiniZed1}
+    \end{center}
+  \end{minipage}
+  \caption{Digilent FTDI configuration view of two MiniZed boards.}
+  \label{fig:digilent_ftdi_config}
+\end{figure}
+% -----------------------------------------------------------------------------
