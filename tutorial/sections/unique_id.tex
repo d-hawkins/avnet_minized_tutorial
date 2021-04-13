@@ -1,0 +1,77 @@
+% =============================================================================
+\section{Unique Board Identification}
+% =============================================================================
+\label{sec:unique_id}
+
+% -----------------------------------------------------------------------------
+% MiniZed Device DNA
+% -----------------------------------------------------------------------------
+%
+\begin{figure}[t]
+  \begin{minipage}{0.5\textwidth}
+    \begin{center}
+    \includegraphics[width=0.7\textwidth]
+    {figures/minized_device_dna_MiniZed01.png}\\
+    (a) \texttt{MiniZed01}
+    \end{center}
+  \end{minipage}
+  \hfil
+  \begin{minipage}{0.5\textwidth}
+    \begin{center}
+    \includegraphics[width=0.7\textwidth]
+    {figures/minized_device_dna_MiniZed02.png}\\
+    (b) \texttt{Minized02}
+    \end{center}
+  \end{minipage}
+  \caption{MiniZed device DNA.}
+  \label{fig:minized_device_dna}
+\end{figure}
+% -----------------------------------------------------------------------------
+
+MiniZed boards all ship with the same FTDI EEPROM image, so they are
+not uniquely identifiable based on their USB identification information
+(at least until the FTDI EEPROM is reprogrammed). The Xilinx programmable
+logic contains a unique ID referred to as the device DNA, and the Murata
+1DX WiFi chip contains a unique MAC address. 
+%
+The device DNA can be read using the Vivado hardware manager.
+Figure~\ref{fig:minized_device_dna} shows the device DNA read from
+\texttt{MiniZed01} and \texttt{MiniZed02}.
+%
+The WiFi MAC address can be read using PetaLinux by first running the WiFi 
+script, \texttt{wifi.sh}, then \texttt{ifconfig wlan0}, and the MAC address
+is reported as \texttt{HWaddr}. The Bluetooth script, \texttt{bt.sh},
+reports the MAC address as \texttt{BDADDR}.
+The MAC address is stored in the one-time programmable (OTP) memory
+of the Infineon/Cypress/Broadcom BCM4343W chipset on the Murata 1DX
+WiFi/Bluetooth module.
+%
+Table~\ref{tab:minized_unique_id} shows some example board identifiers.
+The \href{https://www.wireshark.org/tools/oui-lookup.html}{Wireshark
+OUI Lookup Tool} indicates that MAC prefixes \texttt{A0:CC:2B} and
+\texttt{44:91:60} both belong to \texttt{Murata Manufacturing Co., Ltd.}
+
+% -----------------------------------------------------------------------------
+% MiniZed unique board identification
+% -----------------------------------------------------------------------------
+%
+\begin{table}[b]
+\caption{MiniZed unique board identification}
+\label{tab:minized_unique_id}
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+FTDI Name & Device DNA & WiFi/Bluetooth MAC\\
+\hline\hline
+&&\\
+\texttt{MiniZed01} & \texttt{2A11A4C684B90A53} & \texttt{A0:CC:2B:FF:E9:4B}\\
+\texttt{MiniZed02} & \texttt{3A1102EA74B20A97} & \texttt{44:91:60:17:59:47}\\
+\texttt{MiniZed03} & \texttt{3A1102EA74B0226F} & \texttt{44:91:60:17:D5:CD}\\
+&&\\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+% -----------------------------------------------------------------------------
+
+
