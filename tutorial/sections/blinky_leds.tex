@@ -2,6 +2,24 @@
 \section{Blinky LED Designs}
 % =============================================================================
 
+% -----------------------------------------------------------------------------
+% Zynq Blinky LED designs
+% -----------------------------------------------------------------------------
+%
+\setlength{\unitlength}{1mm}
+\begin{figure}[t]
+  \begin{picture}(150,125)(0,0)
+    \put(17, 4){\includegraphics[width=0.75\textwidth]
+    {figures/zynq_blinky_led_designs.pdf}}
+    \put(50,86){(a) PS LED control via MIO}
+    \put(50,43){(b) PL LED control via EMIO}
+    \put(50, 0){(c) PL LED control via AXI GPIO}
+  \end{picture}
+  \caption{MiniZed PS and PL Blinky LED designs.}
+  \label{fig:zynq_blinky_led_designs}
+\end{figure}
+% -----------------------------------------------------------------------------
+
 The MiniZed has three LEDs;
 %
 \begin{itemize}
@@ -11,17 +29,22 @@ The MiniZed has three LEDs;
 DONE output.
 \end{itemize}
 %
-The design examples in this section show how to blink the LEDs using
-software running on the PS. The hardware designs differ in how the
-LEDs are controlled by the PS;
+Figure~\ref{fig:zynq_blinky_led_designs} shows the different designs
+examples developed in this section that use software running on the ARM 
+processor to blink the LEDs;
 %
 \begin{itemize}
-\item PS bicolor LED control via PS GPIO MIO (no PL use).
-\item PL bicolor and blue LED control via the PS GPIO EMIO.
-\item PL bicolor and blue LED control using an AXI GPIO.
+\item (a) PS bicolor LED control via PS GPIO MIO (no PL use).
+\item (b) PL bicolor and blue LED control via the PS GPIO EMIO (routed through PL).
+\item (c) PL bicolor and blue LED control using an AXI GPIO.
 \end{itemize}
 %
 These simple designs demonstrate how the PS and PL are configured using
-Vivado, and how bare-metal applications are created using the Software
-Development Kit (SDK).
+Vivado, and how bare-metal applications are created using Vitis.
+
+
+
+
+
+
 
